@@ -1,0 +1,81 @@
+spring:
+  application:
+    name: cafe-erp
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cafe_erp}
+    username: ${DB_USERNAME:cafe_user}
+    password: ${DB_PASSWORD:cafe_pass}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:cafe_pass}
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api/v1
+  error:
+    include-message: always
+
+app:
+  jwt:
+    # Set JWT_SECRET env var in production to a secure random 256-bit key
+    # Generate one with: openssl rand -base64 64
+    secret: ${JWT_SECRET:cafe-erp-super-secret-key-change-in-production-must-be-at-least-256-bits}
+    access-token-expiry-ms: 900000        # 15 minutes
+    refresh-token-expiry-ms: 604800000    # 7 days
+
+  cors:
+    # Comma-separated list — override via CORS_ALLOWED_ORIGINS env var in production
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+  reset-owner-password: true
+  # Set to true ONCE to reset owner password to Admin@123, then set back to false and restart
+
+  loyalty:
+    points-per-100: 10          # 10 points per 100 EGP
+    points-to-egp-rate: 0.10    # 100 points = 10 EGP
+    points-validity-days: 180
+
+  gaming:
+    min-session-minutes: 15     # sessions under 15 min billed as 15 min
+    long-session-warning-hours: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    com.cafe.erp: DEBUG
+    org.hibernate.SQL: INFO

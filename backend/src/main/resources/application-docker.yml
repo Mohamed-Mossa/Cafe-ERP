@@ -1,0 +1,6 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/cafe_erp
+    username: cafe_user
+    password: cafe_pass
+    driver-class-name: org.postgresql.Driver

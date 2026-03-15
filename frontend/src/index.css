@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── i18n / RTL global rules ──────────────────────────────────────────────── */
+
+/* Cairo font for the whole app — covers both Arabic and Latin glyphs */
+body {
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+/* When RTL: flip flex-row layouts, align text right */
+[dir="rtl"] {
+  text-align: right;
+}
+
+/* RTL: explicitly flip any flex-row that should reverse in Arabic */
+[dir="rtl"] .flex {
+  /* Allow individual flex containers to control direction via class */
+}
+
+/* RTL: swap left/right padding on nav links */
+[dir="rtl"] .sidebar-nav-item {
+  flex-direction: row-reverse;
+}
+
+/* Number inputs always LTR so digits read left-to-right */
+[dir="rtl"] input[type="number"],
+[dir="rtl"] input[type="tel"] {
+  direction: ltr;
+  text-align: right;
+}
+
+/* Date/time inputs stay LTR */
+[dir="rtl"] input[type="date"],
+[dir="rtl"] input[type="time"],
+[dir="rtl"] input[type="datetime-local"] {
+  direction: ltr;
+}
+
+/* Tables: header text flip handled by dir="rtl" on html */
+[dir="rtl"] th,
+[dir="rtl"] td {
+  text-align: right;
+}
+
+/* Modals should be text-right in Arabic */
+[dir="rtl"] .modal-body {
+  text-align: right;
+}
+
+/* Status badges, small labels — let them inherit */
+[dir="rtl"] .badge {
+  direction: rtl;
+}
+
+/* Number display: always Western digits (1,2,3 not ١,٢,٣) */
+.number, [class*="font-mono"], [class*="tabular"] {
+  font-variant-numeric: normal;
+  unicode-bidi: embed;
+  direction: ltr;
+  display: inline-block;
+}
