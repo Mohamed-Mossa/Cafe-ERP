@@ -73,8 +73,9 @@ public class CustomerService {
     }
 
     private void updateTier(Customer c) {
-        if (c.getTotalSpent().compareTo(BigDecimal.valueOf(5000)) >= 0) c.setTier(CustomerTier.GOLD);
-        else if (c.getTotalSpent().compareTo(BigDecimal.valueOf(2000)) >= 0) c.setTier(CustomerTier.SILVER);
+        // Spec defines tiers by accumulated loyalty points, not EGP spend
+        if (c.getTotalPoints() >= 1500) c.setTier(CustomerTier.GOLD);
+        else if (c.getTotalPoints() >= 500) c.setTier(CustomerTier.SILVER);
         else c.setTier(CustomerTier.BRONZE);
     }
 
@@ -82,11 +83,19 @@ public class CustomerService {
     public java.math.BigDecimal deductCredit(UUID customerId, java.math.BigDecimal amount) {
         Customer customer = customerRepository.findById(customerId)
             .orElseThrow(() -> new com.cafe.erp.shared.infrastructure.exception.BusinessException("Customer not found"));
-        if (customer.getCreditBalance().compareTo(amount) < 0) {
+
+        java.math.BigDecimal newBalance = customer.getCreditBalance().subtract(amount);
+
+        // Allow balance to go negative down to -creditLimit (the spec's "debt" model).
+        // If creditLimit is 0 (not set), the balance cannot go below 0.
+        java.math.BigDecimal floor = customer.getCreditLimit().negate();
+        if (newBalance.compareTo(floor) < 0) {
             throw new com.cafe.erp.shared.infrastructure.exception.BusinessException(
-                "Insufficient credit balance. Available: " + customer.getCreditBalance());
+                "Credit limit exceeded. Available credit + limit: "
+                + customer.getCreditBalance().add(customer.getCreditLimit()) + " EGP");
         }
-        customer.setCreditBalance(customer.getCreditBalance().subtract(amount));
+
+        customer.setCreditBalance(newBalance);
         customerRepository.save(customer);
         return customer.getCreditBalance();
     }

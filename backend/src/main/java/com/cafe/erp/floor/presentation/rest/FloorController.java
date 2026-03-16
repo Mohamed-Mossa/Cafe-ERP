@@ -48,4 +48,22 @@ public class FloorController {
         UUID targetId = UUID.fromString((String) body.get("targetTableId"));
         return ResponseEntity.ok(ApiResponse.success(floorService.mergeTables(sourceId, targetId)));
     }
+
+    /**
+     * Waiter or cashier marks a table as "bill requested" (🟡 BILLING status).
+     * The floor plan and cashier screen immediately reflect this so the cashier
+     * knows to prepare the invoice. No auth restriction — any logged-in staff can call this.
+     */
+    @PostMapping("/tables/{id}/request-bill")
+    public ResponseEntity<ApiResponse<CafeTable>> requestBill(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(floorService.requestBill(id)));
+    }
+
+    /**
+     * Revert a BILLING table back to OCCUPIED (e.g. customer changed their mind).
+     */
+    @PostMapping("/tables/{id}/cancel-bill-request")
+    public ResponseEntity<ApiResponse<CafeTable>> cancelBillRequest(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(floorService.cancelBillRequest(id)));
+    }
 }

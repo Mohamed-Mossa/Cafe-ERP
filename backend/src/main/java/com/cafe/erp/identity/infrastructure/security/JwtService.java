@@ -77,9 +77,16 @@ public class JwtService {
     }
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(
-            java.util.Base64.getEncoder().encodeToString(secret.getBytes())
-        );
-        return Keys.hmacShaKeyFor(keyBytes);
+        // If the secret looks like Base64 (production key from `openssl rand -base64 64`),
+        // decode it. Otherwise treat it as a plain UTF-8 string (dev default).
+        // This avoids the double-encode bug: Base64.encode(bytes) → BASE64.decode() = bytes,
+        // which silently broke when JWT_SECRET was a real base64 env var.
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(secret);
+            return Keys.hmacShaKeyFor(keyBytes);
+        } catch (RuntimeException e) {
+            // Secret is plain text (dev default) or malformed Base64 — use raw UTF-8 bytes
+            return Keys.hmacShaKeyFor(secret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
     }
 }

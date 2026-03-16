@@ -20,14 +20,17 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
   api,
   extraOptions
 ) => {
-  // Wait until the mutex is available without locking it
+  // If a refresh is already in flight, wait for it to complete before sending this request
+  // so it picks up the new access token via prepareHeaders → getState()
   if (isRefreshing && refreshPromise) {
     await refreshPromise;
   }
 
   let result = await baseQuery(args, api, extraOptions);
 
-  if (result.error && (result.error.status === 401 || result.error.status === 403)) {
+  // Only attempt refresh on 401 (Unauthorized / token expired).
+  // 403 = Forbidden (wrong role) — refreshing won't change the role, so don't retry.
+  if (result.error && result.error.status === 401) {
     if (!isRefreshing) {
       isRefreshing = true;
       const { auth } = api.getState() as RootState;
@@ -47,11 +50,11 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
         const refreshResult = await refreshPromise;
 
         if (refreshResult && refreshResult.data) {
-          // Assuming backend returns ApiResponse<AuthResponse> which has a 'data' property
           const responseData = refreshResult.data as any;
           if (responseData.data && responseData.data.accessToken) {
+            // Persist rotated tokens (backend now issues a new refresh token on every refresh)
             api.dispatch(setCredentials(responseData.data));
-            // Retry the initial query
+            // Retry the original request with the new access token
             result = await baseQuery(args, api, extraOptions);
           } else {
             api.dispatch(logout());
@@ -65,7 +68,7 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
       isRefreshing = false;
       refreshPromise = null;
     } else {
-      // wait for the current refresh to finish, then retry
+      // Another request already triggered a refresh; wait for it, then retry
       if (refreshPromise) {
         await refreshPromise;
         result = await baseQuery(args, api, extraOptions);

@@ -45,12 +45,26 @@ public class ShiftService {
     public Shift closeShift(UUID shiftId, CloseShiftRequest req) {
         Shift shift = getOpenShift(shiftId);
         LocalDateTime now = LocalDateTime.now();
-        var closedOrders = orderRepository.findByClosedAtBetweenAndDeletedFalse(shift.getCreatedAt(), now);
+
+        // Bug fix 1: scope to this cashier only so two concurrent cashiers don't inflate each other
+        var closedOrders = orderRepository.findByCashierIdAndClosedAtBetweenAndDeletedFalse(
+                shift.getCashierId(), shift.getCreatedAt(), now);
+
         BigDecimal totalSales = closedOrders.stream()
                 .map(o -> o.getGrandTotal() != null ? o.getGrandTotal() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Bug fix 2: expectedCash must only include cash payments — Visa/wallet stay in their own
+        // reconciliation path and should never inflate the physical cash drawer expectation
+        BigDecimal cashSales = closedOrders.stream()
+                .flatMap(o -> o.getPayments() != null ? o.getPayments().stream() : java.util.stream.Stream.empty())
+                .filter(p -> p.getMethod() == com.cafe.erp.pos.domain.model.PaymentMethod.CASH)
+                .map(p -> p.getAmount() != null ? p.getAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal expenses = expenseRepository.sumByShiftId(shiftId);
-        BigDecimal expectedCash = shift.getOpeningBalance().add(totalSales).subtract(expenses);
+        BigDecimal expectedCash = shift.getOpeningBalance().add(cashSales).subtract(expenses);
+
         shift.setTotalSales(totalSales); shift.setTotalExpenses(expenses);
         shift.setExpectedCash(expectedCash); shift.setActualCash(req.getActualCash());
         shift.setCashVariance(req.getActualCash().subtract(expectedCash));

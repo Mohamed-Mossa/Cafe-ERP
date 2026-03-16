@@ -10,29 +10,35 @@ const debtApi = baseApi.injectEndpoints({
       query: ({ id, amount, note }) => ({ url: `/customers/${id}/topup`, method: 'POST', body: { amount, note } }),
       invalidatesTags: ['CRM'],
     }),
+    setCreditLimit: b.mutation<any, { id: string; creditLimit: number }>({
+      query: ({ id, creditLimit }) => ({ url: `/customers/${id}/credit-limit`, method: 'PUT', body: { creditLimit } }),
+      invalidatesTags: ['CRM'],
+    }),
   }),
   overrideExisting: false,
 });
 
-const { useGetAllCustomersQuery, useTopUpCreditMutation } = debtApi;
+const { useGetAllCustomersQuery, useTopUpCreditMutation, useSetCreditLimitMutation } = debtApi;
 
 export default function DebtManagementPage() {
   const { t, isRTL } = useI18n();
   const { data: custsRes, isLoading } = useGetAllCustomersQuery(undefined, { pollingInterval: 30000 });
   const [topUpCredit] = useTopUpCreditMutation();
+  const [setCreditLimit] = useSetCreditLimitMutation();
 
   const [search, setSearch] = useState('');
   const [topUpModal, setTopUpModal] = useState<any>(null);
   const [topUpForm, setTopUpForm] = useState({ amount: '', note: '' });
+  const [limitModal, setLimitModal] = useState<any>(null);
+  const [limitForm, setLimitForm] = useState({ creditLimit: '' });
   const [msg, setMsg] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'debt' | 'credit'>('debt');
 
-  const allCustomers: any[] = custsRes?.data || [];
+  const allCustomers: any[] = custsRes?.data?.customers || custsRes?.data || [];
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
 
-  // Customers with negative credit (they owe us) — creditBalance < 0 means debt
-  // But our system tracks positive creditBalance as money available
-  // So we filter for customers who may have negative creditLimit usage
+  // creditBalance < 0 = customer owes the cafe (real debt, allowed down to -creditLimit)
+  // creditBalance > 0 = customer has pre-paid credit (wallet)
   const filtered = allCustomers
     .filter(c => {
       if (filterMode === 'debt') return c.creditBalance < 0;
@@ -54,6 +60,16 @@ export default function DebtManagementPage() {
       setTopUpModal(null);
       setTopUpForm({ amount: '', note: '' });
       flash('✅ Credit updated');
+    } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+  };
+
+  const handleSetLimit = async () => {
+    if (!limitModal || !limitForm.creditLimit) return;
+    try {
+      await setCreditLimit({ id: limitModal.id, creditLimit: parseFloat(limitForm.creditLimit) }).unwrap();
+      setLimitModal(null);
+      setLimitForm({ creditLimit: '' });
+      flash('✅ Credit limit updated');
     } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
   };
 
@@ -161,10 +177,16 @@ export default function DebtManagementPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => { setTopUpModal(c); setTopUpForm({ amount: '', note: '' }); }}
-                          className="text-xs px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition">
-                          💳 Adjust Credit
-                        </button>
+                        <div className="flex gap-2">
+                          <button onClick={() => { setTopUpModal(c); setTopUpForm({ amount: '', note: '' }); }}
+                            className="text-xs px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition">
+                            💳 Adjust Credit
+                          </button>
+                          <button onClick={() => { setLimitModal(c); setLimitForm({ creditLimit: String(c.creditLimit || 0) }); }}
+                            className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-medium transition">
+                            🔒 Set Limit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -223,6 +245,49 @@ export default function DebtManagementPage() {
               <button onClick={handleTopUp} disabled={!topUpForm.amount}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold rounded-xl text-sm">
                 Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Set Credit Limit Modal */}
+      {limitModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h2 className="font-bold text-lg mb-1">🔒 Set Credit Limit</h2>
+            <p className="text-xs text-slate-500 mb-4">
+              Max debt this customer can accumulate. Set to 0 to disable credit purchases.
+            </p>
+            <div className="bg-slate-50 rounded-xl p-3 mb-4">
+              <div className="font-bold text-slate-800">{limitModal.fullName}</div>
+              <div className="text-sm text-slate-500">{limitModal.phone}</div>
+              <div className="mt-2">
+                <div className="text-xs text-slate-400">Current Balance</div>
+                <div className={`font-black text-lg ${(limitModal.creditBalance || 0) < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {formatCurrency(limitModal.creditBalance || 0)}
+                </div>
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="text-xs text-slate-500 font-medium mb-1 block">Credit Limit (EGP)</label>
+              <input
+                type="number" min="0" step="50"
+                value={limitForm.creditLimit}
+                onChange={e => setLimitForm(f => ({ ...f, creditLimit: e.target.value }))}
+                placeholder="e.g. 500"
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Customer can owe up to this amount. Their balance can go from 0 down to −{limitForm.creditLimit || '0'} EGP.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setLimitModal(null); setLimitForm({ creditLimit: '' }); }}
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+              <button onClick={handleSetLimit} disabled={limitForm.creditLimit === ''}
+                className="flex-1 py-3 bg-slate-700 hover:bg-slate-800 disabled:bg-slate-200 text-white font-bold rounded-xl text-sm">
+                Save Limit
               </button>
             </div>
           </div>

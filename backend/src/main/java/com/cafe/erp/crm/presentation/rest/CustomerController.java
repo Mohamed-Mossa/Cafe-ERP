@@ -71,4 +71,17 @@ public class CustomerController {
         String note = body.containsKey("note") ? body.get("note").toString() : null;
         return ResponseEntity.ok(ApiResponse.success("Credit topped up", customerService.topUpCredit(id, amount, note)));
     }
+
+    /** Set or update the credit limit for a customer (owner/manager only) */
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('OWNER','MANAGER')")
+    @PutMapping("/{id}/credit-limit")
+    public ResponseEntity<ApiResponse<Customer>> setCreditLimit(
+            @PathVariable UUID id, @RequestBody Map<String, Object> body) {
+        java.math.BigDecimal limit = new java.math.BigDecimal(body.get("creditLimit").toString());
+        if (limit.compareTo(java.math.BigDecimal.ZERO) < 0)
+            throw new com.cafe.erp.shared.infrastructure.exception.BusinessException("Credit limit must be >= 0");
+        Customer customer = customerRepository.findById(id).orElseThrow();
+        customer.setCreditLimit(limit);
+        return ResponseEntity.ok(ApiResponse.success("Credit limit updated", customerRepository.save(customer)));
+    }
 }

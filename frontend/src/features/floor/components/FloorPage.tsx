@@ -18,18 +18,24 @@ const floorApi = baseApi.injectEndpoints({
     mergeTables: b.mutation<any, { sourceTableId: string; targetTableId: string }>({
       query: (body) => ({ url: '/floor/tables/merge', method: 'POST', body }), invalidatesTags: ['Order'],
     }),
+    requestBill: b.mutation<any, string>({
+      query: (id) => ({ url: `/floor/tables/${id}/request-bill`, method: 'POST' }), invalidatesTags: ['Order'],
+    }),
+    cancelBillRequest: b.mutation<any, string>({
+      query: (id) => ({ url: `/floor/tables/${id}/cancel-bill-request`, method: 'POST' }), invalidatesTags: ['Order'],
+    }),
   }),
   overrideExisting: false,
 });
-const { useGetTablesQuery, useCreateTableMutation, useUpdateTableMutation, useDeleteTableMutation, useMergeTablesMutation } = floorApi;
+const { useGetTablesQuery, useCreateTableMutation, useUpdateTableMutation, useDeleteTableMutation, useMergeTablesMutation, useRequestBillMutation, useCancelBillRequestMutation } = floorApi;
 
 const STATUS_STYLE: Record<string, string> = {
   'FREE':     'bg-green-50  border-green-300  text-green-800',
-  'OCCUPIED': 'bg-blue-50   border-blue-400   text-blue-800',
+  'OCCUPIED': 'bg-red-50    border-red-400    text-red-800',
   'BILLING':  'bg-yellow-50 border-yellow-400 text-yellow-800',
   'RESERVED': 'bg-purple-50 border-purple-300 text-purple-700',
 };
-const STATUS_ICON: Record<string, string> = { FREE: '🟢', OCCUPIED: '🔵', BILLING: '🟡', RESERVED: '🟣' };
+const STATUS_ICON: Record<string, string> = { FREE: '🟢', OCCUPIED: '🔴', BILLING: '🟡', RESERVED: '🟣' };
 
 export default function FloorPage() {
   const { t, isRTL } = useI18n();
@@ -40,6 +46,8 @@ export default function FloorPage() {
   const [updateTable] = useUpdateTableMutation();
   const [deleteTable] = useDeleteTableMutation();
   const [mergeTables] = useMergeTablesMutation();
+  const [requestBill] = useRequestBillMutation();
+  const [cancelBillRequest] = useCancelBillRequestMutation();
 
   const [contextTable, setContextTable] = useState<CafeTable | null>(null);
   const [showAddTable, setShowAddTable] = useState(false);
@@ -214,6 +222,18 @@ export default function FloorPage() {
                         className="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 text-slate-600 flex items-center gap-2 transition">
                         {t('floor.goToPOS')}
                       </button>
+                      {table.status === 'OCCUPIED' && (
+                        <button onClick={() => { requestBill(table.id); setContextTable(null); }}
+                          className="w-full px-4 py-3 text-left text-sm hover:bg-yellow-50 text-yellow-700 font-semibold flex items-center gap-2 transition">
+                          🟡 {isRTL ? 'طلب الحساب' : 'Request Bill'}
+                        </button>
+                      )}
+                      {table.status === 'BILLING' && (
+                        <button onClick={() => { cancelBillRequest(table.id); setContextTable(null); }}
+                          className="w-full px-4 py-3 text-left text-sm hover:bg-blue-50 text-blue-700 flex items-center gap-2 transition">
+                          🔵 {isRTL ? 'إلغاء طلب الحساب' : 'Cancel Bill Request'}
+                        </button>
+                      )}
                       <button onClick={() => { setMergeSource(table); setContextTable(null); }}
                         className="w-full px-4 py-3 text-left text-sm hover:bg-amber-50 text-amber-700 flex items-center gap-2 transition">
                         {t('floor.mergeTable')}

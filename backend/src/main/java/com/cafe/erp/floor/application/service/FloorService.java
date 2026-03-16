@@ -78,4 +78,36 @@ public class FloorService {
         messaging.convertAndSend("/topic/tables", source);
         return "Tables merged successfully";
     }
+
+    /**
+     * Waiter signals that the customer at this table has requested the bill.
+     * Sets status to BILLING and broadcasts via WebSocket so the floor plan
+     * immediately shows the 🟡 indicator on every connected screen.
+     */
+    @Transactional
+    public CafeTable requestBill(UUID tableId) {
+        CafeTable table = tableRepository.findById(tableId)
+                .orElseThrow(() -> BusinessException.notFound("Table"));
+        if (table.getStatus() != TableStatus.OCCUPIED)
+            throw new com.cafe.erp.shared.infrastructure.exception.BusinessException(
+                    "Table must be OCCUPIED to request bill (current: " + table.getStatus() + ")");
+        table.setStatus(TableStatus.BILLING);
+        CafeTable saved = tableRepository.save(table);
+        messaging.convertAndSend("/topic/tables", saved);
+        return saved;
+    }
+
+    /** Revert BILLING back to OCCUPIED — e.g. customer ordered more items */
+    @Transactional
+    public CafeTable cancelBillRequest(UUID tableId) {
+        CafeTable table = tableRepository.findById(tableId)
+                .orElseThrow(() -> BusinessException.notFound("Table"));
+        if (table.getStatus() != TableStatus.BILLING)
+            throw new com.cafe.erp.shared.infrastructure.exception.BusinessException(
+                    "Table is not in BILLING status");
+        table.setStatus(TableStatus.OCCUPIED);
+        CafeTable saved = tableRepository.save(table);
+        messaging.convertAndSend("/topic/tables", saved);
+        return saved;
+    }
 }

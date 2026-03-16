@@ -58,6 +58,7 @@ public class PromoController {
     @PostMapping("/validate")
     public ResponseEntity<ApiResponse<PromoService.PromoValidationResult>> validate(
             @RequestParam String code, @RequestParam BigDecimal orderAmount) {
-        return ResponseEntity.ok(ApiResponse.success(promoService.validateAndApply(code, orderAmount)));
+        // Uses preview — does NOT consume a usage slot. Apply happens during payment.
+        return ResponseEntity.ok(ApiResponse.success(promoService.previewPromo(code, orderAmount)));
     }
 }

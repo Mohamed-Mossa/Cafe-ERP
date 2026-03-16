@@ -34,6 +34,30 @@ public class PromoService {
     /** Validates AND atomically decrements usage count (optimistic lock prevents race) */
     @Transactional
     public PromoValidationResult validateAndApply(String code, BigDecimal orderAmount) {
+        PromoCode promo = findActiveAndValid(code, orderAmount);
+
+        BigDecimal discount = calculateDiscount(promo, orderAmount);
+        BigDecimal pct = promo.getDiscountType() == DiscountType.PERCENT ? promo.getDiscountValue() : null;
+
+        promo.setCurrentUsageCount(promo.getCurrentUsageCount() + 1);
+        if (promo.getCurrentUsageCount() >= promo.getMaxUsageCount()) promo.setActive(false);
+        promoRepository.save(promo);
+
+        return new PromoValidationResult(promo.getId(), promo.getCode(), discount, pct);
+    }
+
+    /**
+     * Preview-only validation — returns the discount amount WITHOUT consuming a usage slot.
+     * Use this for the /validate endpoint so cashiers can check a code without wasting it.
+     */
+    public PromoValidationResult previewPromo(String code, BigDecimal orderAmount) {
+        PromoCode promo = findActiveAndValid(code, orderAmount);
+        BigDecimal discount = calculateDiscount(promo, orderAmount);
+        BigDecimal pct = promo.getDiscountType() == DiscountType.PERCENT ? promo.getDiscountValue() : null;
+        return new PromoValidationResult(promo.getId(), promo.getCode(), discount, pct);
+    }
+
+    private PromoCode findActiveAndValid(String code, BigDecimal orderAmount) {
         PromoCode promo = promoRepository.findByCodeIgnoreCaseAndActiveTrue(code)
                 .orElseThrow(() -> new BusinessException("Invalid or inactive promo code", HttpStatus.NOT_FOUND));
         LocalDate today = LocalDate.now();
@@ -43,19 +67,16 @@ public class PromoService {
             throw new BusinessException("Promo code usage limit reached");
         if (promo.getMinimumOrderAmount() != null && orderAmount.compareTo(promo.getMinimumOrderAmount()) < 0)
             throw new BusinessException("Order amount too low for this promo. Minimum: " + promo.getMinimumOrderAmount() + " EGP");
+        return promo;
+    }
 
-        BigDecimal discount = promo.getDiscountType() == DiscountType.PERCENT
+    private BigDecimal calculateDiscount(PromoCode promo, BigDecimal orderAmount) {
+        return promo.getDiscountType() == DiscountType.PERCENT
                 ? orderAmount.multiply(promo.getDiscountValue()).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
                 : promo.getDiscountValue().min(orderAmount);
-
-        promo.setCurrentUsageCount(promo.getCurrentUsageCount() + 1);
-        if (promo.getCurrentUsageCount() >= promo.getMaxUsageCount()) promo.setActive(false);
-        promoRepository.save(promo);
-
-        return new PromoValidationResult(promo.getId(), promo.getCode(), discount);
     }
 
     public List<PromoCode> getActivePromos() { return promoRepository.findActivePromoCodes(); }
 
-    public record PromoValidationResult(java.util.UUID promoId, String code, BigDecimal discountAmount) {}
+    public record PromoValidationResult(java.util.UUID promoId, String code, BigDecimal discountAmount, BigDecimal discountPercent) {}
 }

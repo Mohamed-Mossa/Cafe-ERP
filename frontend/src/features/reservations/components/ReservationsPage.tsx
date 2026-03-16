@@ -5,6 +5,7 @@ import { baseApi } from '../../../app/baseApi';
 const resApi = baseApi.injectEndpoints({
   endpoints: (b) => ({
     getAllReservations: b.query<any, void>({ query: () => '/reservations' }),
+    getTablesForRes: b.query<any, void>({ query: () => '/floor/tables' }),
     createReservation: b.mutation<any, any>({ query: (body) => ({ url: '/reservations', method: 'POST', body }) }),
     updateResStatus: b.mutation<any, { id: string; status: string }>({
       query: ({ id, status }) => ({ url: `/reservations/${id}/status`, method: 'PATCH', body: { status } }),
@@ -14,7 +15,7 @@ const resApi = baseApi.injectEndpoints({
   }),
   overrideExisting: false,
 });
-const { useGetAllReservationsQuery, useCreateReservationMutation, useUpdateResStatusMutation, useMarkDepositPaidMutation, useDeleteReservationMutation } = resApi;
+const { useGetAllReservationsQuery, useGetTablesForResQuery, useCreateReservationMutation, useUpdateResStatusMutation, useMarkDepositPaidMutation, useDeleteReservationMutation } = resApi;
 
 const STATUS_STYLE: Record<string, string> = {
   PENDING:   'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -25,16 +26,18 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 const today = new Date().toISOString().split('T')[0];
-const BLANK = { customerName: '', customerPhone: '', tableName: '', partySize: '2', reservationDate: today, reservationTime: '19:00', durationMinutes: '120', depositAmount: '0', notes: '' };
+const BLANK = { customerName: '', customerPhone: '', tableId: '', tableName: '', partySize: '2', reservationDate: today, reservationTime: '19:00', durationMinutes: '120', depositAmount: '0', notes: '' };
 
 export default function ReservationsPage() {
   const { t, isRTL } = useI18n();
   const { data, isLoading, refetch } = useGetAllReservationsQuery();
+  const { data: tablesRes } = useGetTablesForResQuery();
   const [create] = useCreateReservationMutation();
   const [updateStatus] = useUpdateResStatusMutation();
   const [markDeposit] = useMarkDepositPaidMutation();
   const [deleteRes] = useDeleteReservationMutation();
 
+  const tables: any[] = tablesRes?.data || [];
   const reservations = data?.data || [];
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<any>(BLANK);
@@ -195,8 +198,29 @@ export default function ReservationsPage() {
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
-              <input value={form.tableName} onChange={e => set('tableName', e.target.value)}
-                placeholder="Table name/preference (optional)" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">Table (optional)</label>
+                <select
+                  value={form.tableId || ''}
+                  onChange={e => {
+                    const selected = tables.find((tb: any) => tb.id === e.target.value);
+                    set('tableId', e.target.value);
+                    set('tableName', selected?.name || '');
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="">— No specific table —</option>
+                  {tables
+                    .filter((tb: any) => tb.status === 'FREE' || tb.status === 'RESERVED')
+                    .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                    .map((tb: any) => (
+                      <option key={tb.id} value={tb.id}>
+                        {tb.name} · cap. {tb.capacity}
+                        {tb.status === 'RESERVED' ? ' (already reserved)' : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
               <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
                 placeholder="Notes..." rows={2}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />

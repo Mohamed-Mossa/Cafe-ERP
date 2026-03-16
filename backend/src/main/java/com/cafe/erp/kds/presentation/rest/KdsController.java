@@ -15,10 +15,19 @@ public class KdsController {
     private final OrderLineRepository lineRepo;
     private final SimpMessagingTemplate messaging;
 
-    /** All open orders with kitchen-relevant lines */
+    /** All open orders with kitchen-relevant lines only (excludes gaming fee lines) */
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<List<Order>>> getKitchenOrders() {
         List<Order> orders = orderRepo.findByStatusAndDeletedFalse(OrderStatus.OPEN);
+
+        // Strip lines that are not kitchen items:
+        // - productId == null means it is an auto-generated gaming fee line (no recipe, no prep)
+        // - GAMING source orders that have only a fee line still appear so cashier can see F&B items
+        orders.forEach(o -> o.getLines().removeIf(line -> line.getProductId() == null));
+
+        // Drop orders that have zero kitchen lines after filtering
+        orders.removeIf(o -> o.getLines().isEmpty());
+
         return ResponseEntity.ok(ApiResponse.success(orders));
     }
 

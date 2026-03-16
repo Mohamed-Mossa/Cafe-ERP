@@ -59,6 +59,14 @@ public class Order extends BaseEntity {
     private UUID promoCodeId;
     private String promoCodeApplied;
 
+    /**
+     * For percentage-based promos (and Happy Hour), store the % here so recalculateTotals()
+     * can re-derive the discount amount as lines are added after the promo is applied.
+     * Null for fixed-amount promos — those stay as a hard discountAmount.
+     */
+    @Column(precision = 5, scale = 2)
+    private BigDecimal promoDiscountPercent;
+
     // Customer link (for loyalty)
     private UUID customerId;
     private String customerName;
@@ -78,6 +86,15 @@ public class Order extends BaseEntity {
         this.subtotal = lines.stream()
                 .map(OrderLine::getTotalPrice)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Re-derive discount for percentage-based promos / happy-hour so that lines added
+        // after the promo (e.g. gaming fee) are also discounted correctly
+        if (promoDiscountPercent != null && promoDiscountPercent.compareTo(BigDecimal.ZERO) > 0) {
+            this.discountAmount = subtotal
+                    .multiply(promoDiscountPercent)
+                    .divide(java.math.BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+        }
+
         this.grandTotal = subtotal.subtract(discountAmount).add(taxAmount);
         if (this.grandTotal.compareTo(BigDecimal.ZERO) < 0) {
             this.grandTotal = BigDecimal.ZERO;

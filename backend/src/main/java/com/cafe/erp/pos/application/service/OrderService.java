@@ -2,6 +2,8 @@ package com.cafe.erp.pos.application.service;
 
 import com.cafe.erp.identity.domain.model.User;
 import com.cafe.erp.identity.infrastructure.persistence.UserRepository;
+import com.cafe.erp.identity.domain.model.ActivityLog;
+import com.cafe.erp.identity.infrastructure.persistence.ActivityLogRepository;
 import com.cafe.erp.menu.infrastructure.persistence.ProductRepository;
 import com.cafe.erp.pos.application.command.*;
 import com.cafe.erp.pos.domain.model.*;
@@ -43,6 +45,25 @@ public class OrderService {
     private final RecipeRepository recipeRepository;
     private final InventoryService inventoryService;
     private final CafeTableRepository cafeTableRepository;
+    private final ActivityLogRepository activityLogRepository;
+    private final com.cafe.erp.happyhour.application.service.HappyHourService happyHourService;
+
+    /** Central audit logger — writes to activity_logs table for every financial/security event */
+    private void audit(String action, String entityType, UUID entityId, String details) {
+        try {
+            User user = SecurityUtils.currentUser();
+            activityLogRepository.save(ActivityLog.builder()
+                    .userId(user.getId())
+                    .username(user.getUsername())
+                    .action(action)
+                    .entityType(entityType)
+                    .entityId(entityId)
+                    .details(details)
+                    .build());
+        } catch (Exception e) {
+            log.warn("Audit log failed for action={}: {}", action, e.getMessage());
+        }
+    }
 
     @Transactional
     public Order createOrder(CreateOrderRequest req) {
@@ -75,6 +96,20 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
         broadcastOrderUpdate(saved);
+
+        // Bug 7 fix: apply Happy Hour discount automatically if one is active right now
+        try {
+            java.math.BigDecimal hhDiscount = happyHourService.getCurrentDiscount();
+            if (hhDiscount != null && hhDiscount.compareTo(BigDecimal.ZERO) > 0) {
+                saved.setDiscountType("HAPPY_HOUR");
+                // Store the percentage so recalculateTotals can re-derive the amount
+                // as items are added during the session
+                saved.setPromoDiscountPercent(hhDiscount);
+                orderRepository.save(saved);
+            }
+        } catch (Exception e) {
+            log.warn("Happy Hour check failed: {}", e.getMessage());
+        }
 
         // If this is a table order, mark the table as OCCUPIED
         if (req.getTableId() != null) {
@@ -134,6 +169,10 @@ public class OrderService {
         order.getLines().removeIf(l -> l.getId().equals(lineId));
         order.recalculateTotals();
 
+        audit("REMOVE_LINE", "Order", orderId,
+                "Removed line: " + line.getProductName() + " x" + line.getQuantity()
+                + " from order #" + order.getOrderNumber());
+
         Order updated = orderRepository.save(order);
         broadcastOrderUpdate(updated);
         return updated;
@@ -157,6 +196,10 @@ public class OrderService {
         order.setDiscountAmount(discount);
         order.setDiscountType("MANUAL");
         order.recalculateTotals();
+
+        audit("MANUAL_DISCOUNT", "Order", orderId,
+                "Applied " + req.getDiscountPercent() + "% manual discount ("
+                + discount + " EGP) to order #" + order.getOrderNumber());
 
         return orderRepository.save(order);
     }
@@ -244,6 +287,10 @@ public class OrderService {
         order.setClosedAt(LocalDateTime.now());
         orderRepository.save(order);
         broadcastOrderUpdate(order);
+
+        audit("CANCEL_ORDER", "Order", orderId,
+                "Order #" + order.getOrderNumber() + " cancelled. Reason: " + reason);
+
         log.info("Order #{} cancelled. Reason: {}", order.getOrderNumber(), reason);
 
         // If this was a table order, reset the table to FREE
@@ -261,7 +308,19 @@ public class OrderService {
         order.setDiscountType("PROMO");
         order.setPromoCodeApplied(result.code());
         order.setPromoCodeId(result.promoId());
+
+        // Partial 3 fix: store the promo percentage so recalculateTotals() can re-derive
+        // the discount amount if more lines (e.g. gaming fee) are added later
+        if (result.discountPercent() != null) {
+            order.setPromoDiscountPercent(result.discountPercent());
+        }
+
         order.recalculateTotals();
+
+        audit("APPLY_PROMO", "Order", orderId,
+                "Promo code '" + result.code() + "' applied — discount: "
+                + result.discountAmount() + " EGP on order #" + order.getOrderNumber());
+
         Order saved = orderRepository.save(order);
         broadcastOrderUpdate(saved);
         return saved;

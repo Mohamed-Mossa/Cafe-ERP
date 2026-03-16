@@ -117,17 +117,14 @@ public class GamingService {
         session.setEndedAt(now);
         session.setStatus(SessionStatus.CLOSED);
 
-        // Add gaming charge as a line item to the linked order
+        // Add gaming charge as a line item to the linked order.
+        // NOT wrapped in try-catch — if this fails the cashier must see the error.
+        // A swallowed exception here means the customer gets free gaming time with no trace.
         if (session.getLinkedOrderId() != null && total.compareTo(BigDecimal.ZERO) > 0) {
-            try {
-                com.cafe.erp.pos.domain.model.Order linkedOrder =
-                        orderService.getOrder(session.getLinkedOrderId());
-                if (linkedOrder.getStatus() == com.cafe.erp.pos.domain.model.OrderStatus.OPEN) {
-                    // Add a gaming fee line directly using a special approach
-                    addGamingFeeToOrder(session.getLinkedOrderId(), session.getDeviceName(), totalMins, total);
-                }
-            } catch (Exception e) {
-                log.warn("Could not add gaming fee line to order: {}", e.getMessage());
+            com.cafe.erp.pos.domain.model.Order linkedOrder =
+                    orderService.getOrder(session.getLinkedOrderId());
+            if (linkedOrder.getStatus() == com.cafe.erp.pos.domain.model.OrderStatus.OPEN) {
+                addGamingFeeToOrder(session.getLinkedOrderId(), session.getDeviceName(), totalMins, total);
             }
         }
 
@@ -207,12 +204,8 @@ public class GamingService {
     }
 
     private void addGamingFeeToOrder(java.util.UUID orderId, String deviceName, int minutes, BigDecimal amount) {
-        try {
-            orderService.addGamingFee(orderId, deviceName, minutes, amount);
-            log.info("Added gaming fee {} EGP for device {} ({} min) to order {}", amount, deviceName, minutes, orderId);
-        } catch (Exception e) {
-            log.warn("addGamingFeeToOrder failed: {}", e.getMessage());
-        }
+        orderService.addGamingFee(orderId, deviceName, minutes, amount);
+        log.info("Added gaming fee {} EGP for device {} ({} min) to order {}", amount, deviceName, minutes, orderId);
     }
 
     // Returns the linked order ID for the session so frontend can redirect to payment

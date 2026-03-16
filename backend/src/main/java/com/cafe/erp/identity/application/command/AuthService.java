@@ -78,7 +78,6 @@ public class AuthService {
             throw new BusinessException("Invalid or expired refresh token", HttpStatus.UNAUTHORIZED);
         }
 
-        // JwtService stores userId as subject, not username
         String userId = jwtService.extractUserId(token);
         String stored = redisTemplate.opsForValue().get(REFRESH_PREFIX + userId);
 
@@ -93,9 +92,17 @@ public class AuthService {
             throw new BusinessException("Account is deactivated", HttpStatus.FORBIDDEN);
         }
 
-        String newAccessToken = jwtService.generateAccessToken(user);
+        String newAccessToken  = jwtService.generateAccessToken(user);
+        // Rotate: issue a new refresh token and overwrite the old one in Redis
+        String newRefreshToken = jwtService.generateRefreshToken(user);
+        redisTemplate.opsForValue().set(
+                REFRESH_PREFIX + userId,
+                newRefreshToken,
+                refreshTokenExpiryMs,
+                TimeUnit.MILLISECONDS
+        );
 
-        return buildResponse(user, newAccessToken, token);
+        return buildResponse(user, newAccessToken, newRefreshToken);
     }
 
     public void logout(String userId) {
