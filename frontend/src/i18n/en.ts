@@ -192,8 +192,11 @@ const en = {
   // ── Match Mode ──────────────────────────────────────────────────────────────
   matchMode: {
     title:          '⚡ MATCH MODE',
+    session:        'Session',
     sessionTotal:   'Session Total',
     repeatLast:     '🔁 Repeat Last',
+    noRepeat:       'No previous order',
+    repeatHint:     '⚡ Add items manually',
     normalPOS:      '← Normal POS',
     quickClose:     '⚡ QUICK CLOSE (CASH)',
     otherPayment:   '💳 Other Payment',
@@ -202,7 +205,13 @@ const en = {
     tapToAdd:       'Tap products to add',
     clearCart:      'Clear',
     noProducts:     'No products configured for Match Mode',
-    noProductsHint: 'Go to Menu management and enable "Available in Match Mode" on products',
+    noProductsHint: 'Use the Manage Items button to add products',
+    manageItems:    '⚙️ Items',
+    manageItemsTitle:'Manage Match Mode Items',
+    saveItems:      'Save',
+    searchProducts: 'Search products...',
+    inMatchMode:    'In Match Mode',
+    notInMatchMode: 'Not in Match Mode',
   },
 
   // ── KDS ─────────────────────────────────────────────────────────────────────
@@ -212,8 +221,12 @@ const en = {
     newOrder:    'New',
     preparing:   'Preparing',
     ready:       'Ready',
+    served:      'Served',
     noOrders:    'No pending orders',
     minAgo:      'min ago',
+    items:       'items',
+    allServed:   'All Served',
+    allPrep:     'All Prep',
   },
 
   // ── Shift ───────────────────────────────────────────────────────────────────
@@ -476,18 +489,23 @@ const en = {
 
   // ── Staff ────────────────────────────────────────────────────────────────────
   staff: {
-    title:          'Staff Management',
-    addStaff:       'Add Staff',
-    editStaff:      'Edit Staff',
-    role:           'Role',
-    maxDiscount:    'Max Discount %',
-    owner:          'Owner',
-    manager:        'Manager',
-    supervisor:     'Supervisor',
-    cashier:        'Cashier',
-    waiter:         'Waiter',
-    resetPassword:  'Reset Password',
-    newPassword:    'New Password',
+    title:           'Staff Management',
+    addStaff:        'Add Staff',
+    editStaff:       'Edit Staff',
+    role:            'Role',
+    maxDiscount:     'Max Discount %',
+    owner:           'Owner',
+    manager:         'Manager',
+    supervisor:      'Supervisor',
+    cashier:         'Cashier',
+    waiter:          'Waiter',
+    kitchen:         'Kitchen',
+    barista:         'Barista',
+    resetPassword:   'Reset Password',
+    newPassword:     'New Password',
+    passwordMismatch:'Passwords do not match',
+    passwordTooShort:'Password must be at least 6 characters',
+    passwordChanged: '✅ Password changed successfully',
   },
 
   // ── Suppliers ────────────────────────────────────────────────────────────────

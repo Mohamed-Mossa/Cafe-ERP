@@ -7,7 +7,11 @@ import { formatCurrency } from '../../../utils/currency';
 const matchApi = baseApi.injectEndpoints({
   endpoints: (b) => ({
     getMatchProducts: b.query<any, void>({ query: () => '/menu/products?all=false', providesTags: ['Menu'] }),
-    getMatchSettings: b.query<any, void>({ query: () => '/settings' }),
+    getAllMenuProducts: b.query<any, void>({ query: () => '/menu/products?all=true', providesTags: ['Menu'] }),
+    getMatchSettings: b.query<any, void>({ query: () => '/settings', providesTags: ['Settings'] }),
+    saveMatchSettings: b.mutation<any, Record<string, string>>({
+      query: (body) => ({ url: '/settings', method: 'PUT', body }), invalidatesTags: ['Settings', 'Menu'],
+    }),
     createMatchOrder: b.mutation<any, any>({ query: (body) => ({ url: '/orders', method: 'POST', body }), invalidatesTags: ['Order'] }),
     addMatchLine: b.mutation<any, { orderId: string; productId: string; quantity: number }>({
       query: ({ orderId, ...body }) => ({ url: `/orders/${orderId}/lines`, method: 'POST', body }), invalidatesTags: ['Order'],
@@ -20,26 +24,29 @@ const matchApi = baseApi.injectEndpoints({
   overrideExisting: false,
 });
 
-const { useGetMatchProductsQuery, useGetMatchSettingsQuery, useCreateMatchOrderMutation,
+const { useGetMatchProductsQuery, useGetAllMenuProductsQuery, useGetMatchSettingsQuery,
+  useSaveMatchSettingsMutation, useCreateMatchOrderMutation,
   useAddMatchLineMutation, useCloseMatchOrderMutation } = matchApi;
 
 interface CartItem { productId: string; productName: string; price: number; qty: number; }
 
 function LiveRevenueTicker({ startTime }: { startTime: number }) {
+  const { t } = useI18n();
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setElapsed(Date.now() - startTime), 1000);
-    return () => clearInterval(t);
+    const interval = setInterval(() => setElapsed(Date.now() - startTime), 1000);
+    return () => clearInterval(interval);
   }, [startTime]);
-  const hours = elapsed / 3600000;
-  return <span className="font-mono text-yellow-300 text-xs">Session: {Math.floor(elapsed/60000)}m</span>;
+  return <span className="font-mono text-yellow-300 text-xs">{t('matchMode.session')}: {Math.floor(elapsed/60000)}m</span>;
 }
 
 export default function MatchModePage() {
   const { t, isRTL } = useI18n();
   const navigate = useNavigate();
   const { data: productsRes } = useGetMatchProductsQuery(undefined, { pollingInterval: 30000 });
+  const { data: allProductsRes } = useGetAllMenuProductsQuery();
   const { data: settingsRes } = useGetMatchSettingsQuery();
+  const [saveSettings] = useSaveMatchSettingsMutation();
   const [createOrder] = useCreateMatchOrderMutation();
   const [addLine] = useAddMatchLineMutation();
   const [closeOrder] = useCloseMatchOrderMutation();
@@ -51,20 +58,49 @@ export default function MatchModePage() {
   const [lastOrderTotal, setLastOrderTotal] = useState<number | null>(null);
   const [showPayModal, setShowPayModal] = useState(false);
   const [sessionTotal, setSessionTotal] = useState(0);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [manageSearch, setManageSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const allProducts: any[] = productsRes?.data || [];
+  const allMenuProducts: any[] = allProductsRes?.data || allProducts;
   const settings = settingsRes?.data || {};
   const matchProductIds: string[] = (settings.match_mode_products || '').split(',').filter(Boolean);
   const products = matchProductIds.length > 0
     ? allProducts.filter((p: any) => matchProductIds.includes(p.id))
     : allProducts.filter((p: any) => p.availableInMatchMode);
-  
+
   // Fallback: show all products if none tagged for match mode
   const displayProducts = products.length > 0 ? products : allProducts.slice(0, 20);
 
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   const flash = (m: string, ms = 2500) => { setMsg(m); setTimeout(() => setMsg(''), ms); };
+
+  // Sync selectedIds when manage modal opens
+  const openManageModal = () => {
+    setSelectedIds(new Set(matchProductIds));
+    setManageSearch('');
+    setShowManageModal(true);
+  };
+
+  const toggleProduct = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const saveMatchItems = async () => {
+    try {
+      await saveSettings({ match_mode_products: Array.from(selectedIds).join(',') }).unwrap();
+      setShowManageModal(false);
+      flash(`✅ ${t('saved')}`, 2000);
+    } catch (e: any) {
+      flash('❌ ' + (e?.data?.message || t('failed')));
+    }
+  };
 
   const tapProduct = (p: any) => {
     setCart(prev => {
@@ -75,8 +111,8 @@ export default function MatchModePage() {
   };
 
   const repeatLastOrder = () => {
-    if (!lastOrderTotal) { flash('No previous order to repeat'); return; }
-    flash('⚡ Repeat order feature: add items manually');
+    if (!lastOrderTotal) { flash(t('matchMode.noRepeat')); return; }
+    flash(t('matchMode.repeatHint'));
   };
 
   const quickClose = async () => {
@@ -96,9 +132,9 @@ export default function MatchModePage() {
       setSessionTotal(s => s + cartTotal);
       setCart([]);
       setOrderId(null);
-      flash(`✅ Closed ${formatCurrency(cartTotal)} — CASH`, 2000);
+      flash(`✅ ${formatCurrency(cartTotal)} — ${t('pos.cash')}`, 2000);
     } catch (e: any) {
-      flash('❌ ' + (e?.data?.message || 'Failed'));
+      flash('❌ ' + (e?.data?.message || t('failed')));
     }
   };
 
@@ -114,19 +150,23 @@ export default function MatchModePage() {
       {/* Header bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-800">
         <div className="flex items-center gap-3">
-          <span className="text-xl font-black text-yellow-400">⚡ MATCH MODE</span>
+          <span className="text-xl font-black text-yellow-400">{t('matchMode.title')}</span>
           <LiveRevenueTicker startTime={sessionStart} />
-          <span className="text-xs text-green-400 font-mono">Session Total: {formatCurrency(sessionTotal)}</span>
+          <span className="text-xs text-green-400 font-mono">{t('matchMode.sessionTotal')}: {formatCurrency(sessionTotal)}</span>
         </div>
         <div className="flex items-center gap-2">
           {msg && <span className={`text-xs px-3 py-1 rounded-full ${msg.startsWith('❌') ? 'bg-red-900 text-red-300' : 'bg-green-900 text-green-300'}`}>{msg}</span>}
+          <button onClick={openManageModal}
+            className="px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded-lg text-xs font-bold transition">
+            {t('matchMode.manageItems')}
+          </button>
           <button onClick={repeatLastOrder}
             className="px-3 py-1.5 bg-indigo-700 hover:bg-indigo-600 rounded-lg text-xs font-bold transition">
-            🔁 Repeat Last
+            {t('matchMode.repeatLast')}
           </button>
           <button onClick={() => navigate('/pos')}
             className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-xs font-medium transition">
-            ← Normal POS
+            {t('matchMode.normalPOS')}
           </button>
         </div>
       </div>
@@ -137,8 +177,8 @@ export default function MatchModePage() {
           {displayProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-gray-500">
               <div className="text-4xl mb-3">🎮</div>
-              <div className="text-lg font-bold mb-1">No products configured for Match Mode</div>
-              <div className="text-sm">Go to Menu management and enable "Available in Match Mode" on products</div>
+              <div className="text-lg font-bold mb-1">{t('matchMode.noProducts')}</div>
+              <div className="text-sm">{t('matchMode.noProductsHint')}</div>
             </div>
           ) : (
             <div className="grid grid-cols-4 xl:grid-cols-5 gap-2">
@@ -166,15 +206,15 @@ export default function MatchModePage() {
         {/* Cart Panel */}
         <div className="w-72 flex flex-col bg-gray-900 border-l border-gray-800">
           <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
-            <span className="font-bold text-sm">🛒 Cart ({cart.reduce((s, i) => s + i.qty, 0)} items)</span>
+            <span className="font-bold text-sm">🛒 {t('matchMode.cart')} ({cart.reduce((s, i) => s + i.qty, 0)})</span>
             {cart.length > 0 && (
-              <button onClick={() => setCart([])} className="text-xs text-red-400 hover:text-red-300">Clear</button>
+              <button onClick={() => setCart([])} className="text-xs text-red-400 hover:text-red-300">{t('matchMode.clearCart')}</button>
             )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {cart.length === 0 ? (
-              <div className="text-center text-gray-600 text-sm py-8">Tap products to add</div>
+              <div className="text-center text-gray-600 text-sm py-8">{t('matchMode.tapToAdd')}</div>
             ) : cart.map(item => (
               <div key={item.productId} className="bg-gray-800 rounded-lg px-3 py-2 flex items-center gap-2">
                 <div className="flex-1 min-w-0">
@@ -194,16 +234,16 @@ export default function MatchModePage() {
 
           <div className="p-3 border-t border-gray-800 space-y-2">
             <div className="flex justify-between text-lg font-black">
-              <span>Total</span>
+              <span>{t('total')}</span>
               <span className="text-yellow-400">{formatCurrency(cartTotal)}</span>
             </div>
             <button onClick={quickClose} disabled={cart.length === 0}
               className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-700 disabled:text-gray-500 text-gray-900 font-black rounded-xl transition active:scale-95 text-sm">
-              ⚡ QUICK CLOSE (CASH)
+              {t('matchMode.quickClose')}
             </button>
             <button onClick={() => { if (cart.length > 0) setShowPayModal(true); }} disabled={cart.length === 0}
               className="w-full py-2 bg-blue-700 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white font-bold rounded-xl transition text-xs">
-              💳 Other Payment
+              {t('matchMode.otherPayment')}
             </button>
           </div>
         </div>
@@ -213,7 +253,7 @@ export default function MatchModePage() {
       {showPayModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-80">
-            <h2 className="font-bold text-lg mb-4 text-white">Select Payment</h2>
+            <h2 className="font-bold text-lg mb-4 text-white">{t('matchMode.selectPayment')}</h2>
             <div className="text-2xl font-black text-yellow-400 mb-4 text-center">{formatCurrency(cartTotal)}</div>
             {['CASH','CARD','EWALLET'].map(method => (
               <button key={method} onClick={async () => {
@@ -234,14 +274,103 @@ export default function MatchModePage() {
                   setOrderId(null);
                   setShowPayModal(false);
                   flash(`✅ ${formatCurrency(cartTotal)} — ${method}`, 2000);
-                } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); setShowPayModal(false); }
+                } catch (e: any) { flash('❌ ' + (e?.data?.message || t('failed'))); setShowPayModal(false); }
               }}
                 className="w-full py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-white font-bold mb-2 transition">
-                {method === 'CASH' ? '💵' : method === 'CARD' ? '💳' : '📱'} {method}
+                {method === 'CASH' ? '💵' : method === 'CARD' ? '💳' : '📱'} {method === 'CASH' ? t('pos.cash') : method === 'CARD' ? t('pos.card') : t('pos.ewallet')}
               </button>
             ))}
             <button onClick={() => setShowPayModal(false)}
-              className="w-full py-2 text-gray-400 text-sm hover:text-gray-300">Cancel</button>
+              className="w-full py-2 text-gray-400 text-sm hover:text-gray-300">{t('cancel')}</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Manage Match Mode Items Modal ─────────────────────────────────── */}
+      {showManageModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-lg flex flex-col max-h-[85vh]">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+              <h2 className="font-bold text-base text-white">{t('matchMode.manageItemsTitle')}</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{selectedIds.size} {isRTL ? 'محدد' : 'selected'}</span>
+                <button onClick={() => setShowManageModal(false)}
+                  className="text-gray-400 hover:text-white text-lg leading-none px-1">✕</button>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="px-4 pt-3 pb-2">
+              <input
+                type="text"
+                value={manageSearch}
+                onChange={e => setManageSearch(e.target.value)}
+                placeholder={t('matchMode.searchProducts')}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white placeholder-gray-500 outline-none focus:border-yellow-500"
+                dir={isRTL ? 'rtl' : 'ltr'}
+              />
+            </div>
+
+            {/* Quick actions */}
+            <div className="px-4 pb-2 flex gap-2">
+              <button
+                onClick={() => setSelectedIds(new Set(allMenuProducts.map((p: any) => p.id)))}
+                className="text-xs px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition">
+                {isRTL ? 'تحديد الكل' : 'Select all'}
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="text-xs px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition">
+                {isRTL ? 'إلغاء الكل' : 'Clear all'}
+              </button>
+            </div>
+
+            {/* Product list */}
+            <div className="flex-1 overflow-y-auto px-4 pb-3 space-y-1">
+              {allMenuProducts
+                .filter((p: any) =>
+                  !manageSearch ||
+                  p.name?.toLowerCase().includes(manageSearch.toLowerCase()) ||
+                  p.sku?.toLowerCase().includes(manageSearch.toLowerCase())
+                )
+                .map((p: any) => {
+                  const checked = selectedIds.has(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => toggleProduct(p.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition
+                        ${checked ? 'bg-yellow-600/30 border border-yellow-500/50' : 'bg-gray-800 border border-transparent hover:bg-gray-700'}`}
+                      dir={isRTL ? 'rtl' : 'ltr'}
+                    >
+                      {/* Checkbox visual */}
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 border-2 transition
+                        ${checked ? 'bg-yellow-500 border-yellow-500' : 'border-gray-500'}`}>
+                        {checked && <span className="text-gray-900 text-xs font-black">✓</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{p.name}</div>
+                        {p.categoryName && (
+                          <div className="text-xs text-gray-400 truncate">{p.categoryName}</div>
+                        )}
+                      </div>
+                      <div className="text-yellow-400 text-sm font-bold flex-shrink-0">
+                        {formatCurrency(p.sellingPrice)}
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+
+            {/* Save button */}
+            <div className="px-4 py-3 border-t border-gray-700">
+              <button
+                onClick={saveMatchItems}
+                className="w-full py-3 bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-black rounded-xl transition text-sm">
+                {t('matchMode.saveItems')} ({selectedIds.size})
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -29,7 +29,7 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private UUID categoryId;
 
-    // Computed field (not stored) — populated by service
+    // Computed fields (not stored) — populated by service
     @Transient
     private BigDecimal costPrice;
 
@@ -38,4 +38,7 @@ public class Product extends BaseEntity {
 
     @Transient
     private BigDecimal profitPercent;
+
+    @Transient
+    private String categoryName;
 }

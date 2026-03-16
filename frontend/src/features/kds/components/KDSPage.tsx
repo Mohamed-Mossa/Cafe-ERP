@@ -38,22 +38,29 @@ export default function KDSPage() {
   const [updateOrder] = useUpdateOrderStatusMutation();
   const [filter, setFilter] = useState<string>('ALL');
 
+  const STATUS_LABELS: Record<string, string> = {
+    NEW:      t('kds.newOrder'),
+    PREPARING: t('kds.preparing'),
+    READY:    t('kds.ready'),
+    SERVED:   t('kds.served'),
+  };
+
   const orders = (data?.data || []).filter(o => o.lines.length > 0);
   const filtered = filter === 'ALL' ? orders
     : orders.filter(o => o.lines.some(l => (l as any).kitchenStatus === filter));
 
-  if (isLoading) return <div className="flex items-center justify-center h-full text-slate-400">Loading...</div>;
+  if (isLoading) return <div className="flex items-center justify-center h-full text-slate-400">{t('loading')}</div>;
 
   return (
     <div className="h-full flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">👨‍🍳 Kitchen Display</h1>
+        <h1 className="text-xl font-bold text-slate-800">👨‍🍳 {t('kds.title')}</h1>
         <div className="flex gap-2">
           {['ALL', ...Object.keys(STATUS_META)].map(s => (
             <button key={s} onClick={() => setFilter(s)}
               className={`px-3 py-1.5 rounded-xl text-sm font-semibold transition ${filter === s ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>
-              {s === 'ALL' ? 'All' : STATUS_META[s as keyof typeof STATUS_META].icon + ' ' + STATUS_META[s as keyof typeof STATUS_META].label}
+              {s === 'ALL' ? t('all') : STATUS_META[s as keyof typeof STATUS_META].icon + ' ' + STATUS_LABELS[s]}
             </button>
           ))}
         </div>
@@ -63,7 +70,7 @@ export default function KDSPage() {
         <div className="flex-1 flex items-center justify-center text-slate-300">
           <div className="text-center">
             <div className="text-6xl mb-4">👨‍🍳</div>
-            <div className="text-lg font-medium">No orders in kitchen</div>
+            <div className="text-lg font-medium">{t('kds.noOrders')}</div>
           </div>
         </div>
       ) : (
@@ -79,18 +86,18 @@ export default function KDSPage() {
                     <div className="font-black text-slate-800">#{order.orderNumber}</div>
                     <div className="text-xs text-slate-400">
                       {order.source === 'TABLE' ? `🪑 ${order.tableName}` :
-                       order.source === 'GAMING' ? `🎮 ${order.deviceName}` : '🥡 Takeaway'}
+                       order.source === 'GAMING' ? `🎮 ${order.deviceName}` : `🥡 ${t('pos.takeaway')}`}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="text-xs text-slate-400">{order.lines.length} items</span>
+                    <span className="text-xs text-slate-400">{order.lines.length} {t('kds.items')}</span>
                     {!allServed && (
                       <button
                         onClick={() => updateOrder({ orderId: order.id, status: allReady ? 'SERVED' : 'PREPARING' })}
                         className={`text-xs px-2 py-1 rounded-lg font-bold transition ${
                           allReady ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-amber-500 text-white hover:bg-amber-600'
                         }`}>
-                        {allReady ? '✓ All Served' : '👨‍🍳 All Prep'}
+                        {allReady ? `✓ ${t('kds.allServed')}` : `👨‍🍳 ${t('kds.allPrep')}`}
                       </button>
                     )}
                   </div>
@@ -114,7 +121,7 @@ export default function KDSPage() {
                           <button
                             onClick={() => updateLine({ lineId: line.id, status: next })}
                             className="text-xs px-2 py-1 bg-white/60 hover:bg-white rounded-lg font-bold transition whitespace-nowrap">
-                            → {STATUS_META[next as keyof typeof STATUS_META]?.label}
+                            → {STATUS_LABELS[next]}
                           </button>
                         )}
                       </div>

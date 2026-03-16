@@ -17,6 +17,15 @@ public class ReservationController {
         return ResponseEntity.ok(ApiResponse.success(service.getAll()));
     }
 
+    /**
+     * Returns CONFIRMED reservations whose time falls within the next 60 minutes.
+     * The floor page polls this every 60 seconds and shows a banner when results > 0.
+     */
+    @GetMapping("/upcoming-alerts")
+    public ResponseEntity<ApiResponse<List<Reservation>>> getUpcomingAlerts() {
+        return ResponseEntity.ok(ApiResponse.success(service.getUpcomingAlerts()));
+    }
+
     @GetMapping("/date/{date}") public ResponseEntity<ApiResponse<List<Reservation>>> getForDate(
             @PathVariable @DateTimeFormat(iso=DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(ApiResponse.success(service.getForDate(date)));

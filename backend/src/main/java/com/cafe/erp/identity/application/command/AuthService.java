@@ -142,9 +142,10 @@ public class AuthService {
 
     private int defaultMaxDiscount(Role role) {
         return switch (role) {
-            case CASHIER   -> 5;
+            case CASHIER    -> 5;
             case SUPERVISOR -> 15;
-            default        -> 100;
+            case KITCHEN, WAITER, BARISTA -> 0;
+            default         -> 100;
         };
     }
 

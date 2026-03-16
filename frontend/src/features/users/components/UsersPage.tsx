@@ -19,10 +19,16 @@ const usersApi = baseApi.injectEndpoints({
 });
 const { useGetAllUsersQuery, useCreateUserMutation, useToggleUserStatusMutation, useChangePasswordMutation, useUpdateUserMutation, useGetActivityLogQuery } = usersApi;
 
-const ROLES = ['CASHIER', 'WAITER', 'SUPERVISOR', 'MANAGER', 'OWNER'];
+const ROLES = ['CASHIER', 'WAITER', 'SUPERVISOR', 'MANAGER', 'OWNER', 'KITCHEN', 'BARISTA'];
+
 const ROLE_BADGE: Record<string, string> = {
-  OWNER: 'bg-purple-100 text-purple-700', MANAGER: 'bg-blue-100 text-blue-700',
-  SUPERVISOR: 'bg-indigo-100 text-indigo-700', CASHIER: 'bg-green-100 text-green-700', WAITER: 'bg-slate-100 text-slate-600',
+  OWNER:      'bg-purple-100 text-purple-700',
+  MANAGER:    'bg-blue-100   text-blue-700',
+  SUPERVISOR: 'bg-indigo-100 text-indigo-700',
+  CASHIER:    'bg-green-100  text-green-700',
+  WAITER:     'bg-slate-100  text-slate-600',
+  KITCHEN:    'bg-orange-100 text-orange-700',
+  BARISTA:    'bg-amber-100  text-amber-700',
 };
 const BLANK = { username: '', password: '', fullName: '', role: 'CASHIER', pin: '', maxDiscountPercent: '0' };
 
@@ -38,6 +44,17 @@ export default function UsersPage() {
   const [updateUser] = useUpdateUserMutation();
   const [changePassword] = useChangePasswordMutation();
 
+  // Map role enum → translated display label
+  const ROLE_LABEL: Record<string, string> = {
+    OWNER:      t('staff.owner'),
+    MANAGER:    t('staff.manager'),
+    SUPERVISOR: t('staff.supervisor'),
+    CASHIER:    t('staff.cashier'),
+    WAITER:     t('staff.waiter'),
+    KITCHEN:    t('staff.kitchen'),
+    BARISTA:    t('staff.barista'),
+  };
+
   const users = usersRes?.data || [];
   const logs = logRes?.data || [];
 
@@ -51,7 +68,6 @@ export default function UsersPage() {
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
-  // password change state
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
@@ -59,57 +75,61 @@ export default function UsersPage() {
   const set = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }));
 
   const handleCreate = async () => {
-    if (!form.username || !form.password || !form.fullName) { setFormError('Username, password and full name required'); return; }
+    if (!form.username || !form.password || !form.fullName) {
+      setFormError(t('required')); return;
+    }
     setSaving(true); setFormError('');
     try { await createUser(form).unwrap(); setShowCreate(false); setForm(BLANK); refetch(); }
-    catch (e: any) { setFormError(e?.data?.message || 'Failed'); }
+    catch (e: any) { setFormError(e?.data?.message || t('failed')); }
     finally { setSaving(false); }
   };
 
   const handleUpdate = async () => {
-    if (!editForm.fullName) { setEditError('Full name required'); return; }
+    if (!editForm.fullName) { setEditError(t('required')); return; }
     setEditSaving(true); setEditError('');
     try {
       await updateUser({ id: editTarget.id, fullName: editForm.fullName, role: editForm.role, maxDiscountPercent: parseInt(editForm.maxDiscountPercent || '0') }).unwrap();
       setEditTarget(null); refetch();
-    } catch (e: any) { setEditError(e?.data?.message || 'Failed'); }
+    } catch (e: any) { setEditError(e?.data?.message || t('failed')); }
     finally { setEditSaving(false); }
   };
 
   const handlePasswordChange = async () => {
     setPwError(''); setPwSuccess('');
-    if (!pwForm.currentPassword || !pwForm.newPassword) { setPwError('All fields required'); return; }
-    if (pwForm.newPassword !== pwForm.confirm) { setPwError('Passwords do not match'); return; }
-    if (pwForm.newPassword.length < 6) { setPwError('New password must be at least 6 characters'); return; }
+    if (!pwForm.currentPassword || !pwForm.newPassword) { setPwError(t('required')); return; }
+    if (pwForm.newPassword !== pwForm.confirm) { setPwError(t('staff.passwordMismatch')); return; }
+    if (pwForm.newPassword.length < 6) { setPwError(t('staff.passwordTooShort')); return; }
     try {
       await changePassword({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }).unwrap();
-      setPwSuccess('Password changed successfully!');
+      setPwSuccess(t('staff.passwordChanged'));
       setPwForm({ currentPassword: '', newPassword: '', confirm: '' });
-    } catch (e: any) { setPwError(e?.data?.message || 'Failed'); }
+    } catch (e: any) { setPwError(e?.data?.message || t('failed')); }
   };
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'staff', label: '👤 Staff' },
-    { key: 'password', label: '🔑 Change Password' },
-    ...(role === 'OWNER' || role === 'MANAGER' ? [{ key: 'log' as Tab, label: '📋 Activity Log' }] : []),
+    { key: 'staff',    label: `👤 ${t('staff.title')}` },
+    { key: 'password', label: `🔑 ${t('staff.resetPassword')}` },
+    ...(role === 'OWNER' || role === 'MANAGER' ? [{ key: 'log' as Tab, label: `📋 ${t('activityLog.title')}` }] : []),
   ];
 
   return (
     <div className="h-full flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">👤 Users & Access</h1>
+      <div className={`flex items-center justify-between ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <h1 className="text-xl font-bold text-slate-800">👤 {t('staff.title')}</h1>
         {tab === 'staff' && (role === 'OWNER' || role === 'MANAGER') && (
           <button onClick={() => { setShowCreate(true); setFormError(''); }}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm">+ Add Staff</button>
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm">
+            + {t('staff.addStaff')}
+          </button>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === t.key ? 'bg-slate-900 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>
-            {t.label}
+      <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+        {TABS.map(tb => (
+          <button key={tb.key} onClick={() => setTab(tb.key)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition ${tab === tb.key ? 'bg-slate-900 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}>
+            {tb.label}
           </button>
         ))}
       </div>
@@ -117,11 +137,11 @@ export default function UsersPage() {
       {/* Staff tab */}
       {tab === 'staff' && (
         <div className="flex-1 bg-white rounded-2xl shadow-sm overflow-hidden">
-          {isLoading ? <div className="flex items-center justify-center h-full text-slate-400">Loading...</div>
+          {isLoading ? <div className="flex items-center justify-center h-full text-slate-400">{t('loading')}</div>
           : <div className="overflow-auto h-full">
             <table className="w-full">
               <thead className="bg-slate-50 sticky top-0">
-                <tr>{['Full Name','Username','Role','Max Discount','Status',''].map(h => (
+                <tr>{[t('name'), t('username'), t('staff.role'), t('staff.maxDiscount'), t('status'), ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                 ))}</tr>
               </thead>
@@ -131,23 +151,25 @@ export default function UsersPage() {
                     <td className="px-4 py-3 font-semibold text-slate-800">{u.fullName}</td>
                     <td className="px-4 py-3 font-mono text-sm text-slate-400">@{u.username}</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${ROLE_BADGE[u.role]||''}`}>{u.role}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${ROLE_BADGE[u.role] || 'bg-slate-100 text-slate-600'}`}>
+                        {ROLE_LABEL[u.role] || u.role}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-500">{u.maxDiscountPercent}%</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${u.active ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500'}`}>
-                        {u.active ? '● Active' : '○ Inactive'}
+                        {u.active ? `● ${t('active')}` : `○ ${t('inactive')}`}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       {(role === 'OWNER' || role === 'MANAGER') && (
-                        <div className="flex gap-2">
-                        <button onClick={() => { setEditTarget(u); setEditForm({ fullName: u.fullName, role: u.role, maxDiscountPercent: String(u.maxDiscountPercent) }); setEditError(''); }}
-                          className="px-3 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium transition">Edit</button>
-                        <button onClick={async () => { await toggleStatus(u.id); refetch(); }}
-                          className={`px-3 py-1 text-xs rounded-lg font-medium transition ${u.active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
-                          {u.active ? 'Deactivate' : 'Activate'}
-                        </button>
+                        <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                          <button onClick={() => { setEditTarget(u); setEditForm({ fullName: u.fullName, role: u.role, maxDiscountPercent: String(u.maxDiscountPercent) }); setEditError(''); }}
+                            className="px-3 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium transition">{t('edit')}</button>
+                          <button onClick={async () => { await toggleStatus(u.id); refetch(); }}
+                            className={`px-3 py-1 text-xs rounded-lg font-medium transition ${u.active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                            {u.active ? t('inactive') : t('active')}
+                          </button>
                         </div>
                       )}
                     </td>
@@ -163,19 +185,19 @@ export default function UsersPage() {
       {tab === 'password' && (
         <div className="flex-1 flex items-start justify-center pt-8">
           <div className="bg-white rounded-2xl shadow-sm p-6 w-full max-w-sm">
-            <h2 className="font-bold text-lg mb-4">🔑 Change Password</h2>
+            <h2 className="font-bold text-lg mb-4">🔑 {t('staff.resetPassword')}</h2>
             {pwError && <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{pwError}</div>}
             {pwSuccess && <div className="mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-semibold">{pwSuccess}</div>}
             <div className="space-y-3">
               <input type="password" value={pwForm.currentPassword} onChange={e => setPwForm(p => ({ ...p, currentPassword: e.target.value }))}
-                placeholder="Current Password" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                placeholder={t('password')} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               <input type="password" value={pwForm.newPassword} onChange={e => setPwForm(p => ({ ...p, newPassword: e.target.value }))}
-                placeholder="New Password (min 6 chars)" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                placeholder={`${t('staff.newPassword')} (min 6)`} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               <input type="password" value={pwForm.confirm} onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))}
-                placeholder="Confirm New Password" className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                placeholder={t('confirm')} className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <button onClick={handlePasswordChange} className="mt-4 w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl">
-              Update Password
+              {t('update')}
             </button>
           </div>
         </div>
@@ -187,13 +209,13 @@ export default function UsersPage() {
           <div className="overflow-auto h-full">
             <table className="w-full">
               <thead className="bg-slate-50 sticky top-0">
-                <tr>{['User','Action','Entity','Time'].map(h => (
+                <tr>{[t('staff.title'), t('actions'), t('description'), t('date')].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
                 {logs.length === 0
-                  ? <tr><td colSpan={4} className="px-4 py-16 text-center text-slate-400">No activity logs yet</td></tr>
+                  ? <tr><td colSpan={4} className="px-4 py-16 text-center text-slate-400">{t('noData')}</td></tr>
                   : logs.map((l: any) => (
                     <tr key={l.id} className="border-t border-slate-100 hover:bg-slate-50 transition">
                       <td className="px-4 py-3 font-medium text-slate-700">{l.username}</td>
@@ -208,37 +230,38 @@ export default function UsersPage() {
         </div>
       )}
 
-
       {/* Edit staff modal */}
       {editTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 className="font-bold text-lg mb-4">✏️ Edit {editTarget.fullName}</h2>
+            <h2 className="font-bold text-lg mb-4">✏️ {t('staff.editStaff')}: {editTarget.fullName}</h2>
             {editError && <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{editError}</div>}
             <div className="space-y-3">
-              <input value={editForm.fullName} onChange={e => setEditForm((p: any) => ({ ...p, fullName: e.target.value }))} placeholder="Full Name *"
+              <input value={editForm.fullName} onChange={e => setEditForm((p: any) => ({ ...p, fullName: e.target.value }))}
+                placeholder={`${t('name')} *`}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Role</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('staff.role')}</label>
                   <select value={editForm.role} onChange={e => setEditForm((p: any) => ({ ...p, role: e.target.value }))}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white outline-none">
-                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Max Discount %</label>
-                  <input type="number" value={editForm.maxDiscountPercent} onChange={e => setEditForm((p: any) => ({ ...p, maxDiscountPercent: e.target.value }))} min={0} max={100}
+                  <label className="text-xs text-slate-500 block mb-1">{t('staff.maxDiscount')}</label>
+                  <input type="number" value={editForm.maxDiscountPercent}
+                    onChange={e => setEditForm((p: any) => ({ ...p, maxDiscountPercent: e.target.value }))} min={0} max={100}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setEditTarget(null); setEditError(''); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={handleUpdate} disabled={editSaving}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">
-                {editSaving ? 'Saving...' : 'Save Changes'}
+                {editSaving ? t('loading') : t('save')}
               </button>
             </div>
           </div>
@@ -249,31 +272,34 @@ export default function UsersPage() {
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 className="font-bold text-lg mb-4">Add Staff Member</h2>
+            <h2 className="font-bold text-lg mb-4">+ {t('staff.addStaff')}</h2>
             {formError && <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{formError}</div>}
             <div className="space-y-3">
-              <input value={form.fullName} onChange={e => set('fullName', e.target.value)} placeholder="Full Name *"
+              <input value={form.fullName} onChange={e => set('fullName', e.target.value)}
+                placeholder={`${t('name')} *`}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-              <input value={form.username} onChange={e => set('username', e.target.value.toLowerCase().replace(/\s/g,''))} placeholder="Username *"
+              <input value={form.username} onChange={e => set('username', e.target.value.toLowerCase().replace(/\s/g,''))}
+                placeholder={`${t('username')} *`}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500" />
-              <input type="password" value={form.password} onChange={e => set('password', e.target.value)} placeholder="Password *"
+              <input type="password" value={form.password} onChange={e => set('password', e.target.value)}
+                placeholder={`${t('password')} *`}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Role *</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('staff.role')} *</label>
                   <select value={form.role} onChange={e => set('role', e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white outline-none">
-                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r] || r}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">PIN (optional)</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('pin')}</label>
                   <input value={form.pin} onChange={e => set('pin', e.target.value.replace(/\D/g,'').slice(0,4))}
                     placeholder="4 digits" maxLength={4}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-mono text-center tracking-widest outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Max Discount %</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('staff.maxDiscount')}</label>
                   <input type="number" value={form.maxDiscountPercent} onChange={e => set('maxDiscountPercent', e.target.value)}
                     placeholder="0" min={0} max={100}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500 text-center" />
@@ -282,10 +308,10 @@ export default function UsersPage() {
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowCreate(false); setFormError(''); setForm(BLANK); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={handleCreate} disabled={saving}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">
-                {saving ? 'Creating...' : 'Create Staff'}
+                {saving ? t('loading') : t('create')}
               </button>
             </div>
           </div>
@@ -294,3 +320,4 @@ export default function UsersPage() {
     </div>
   );
 }
+

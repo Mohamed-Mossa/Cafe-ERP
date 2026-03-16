@@ -33,7 +33,7 @@ export default function AppShell() {
       items: [
         { to: '/pos',           icon: '🛒', label: t('nav.pos'),          roles: ['OWNER','MANAGER','SUPERVISOR','CASHIER','WAITER'] },
         { to: '/floor',         icon: '🪑', label: t('nav.floor'),        roles: ['OWNER','MANAGER','SUPERVISOR','CASHIER','WAITER'] },
-        { to: '/kds',           icon: '👨‍🍳', label: t('nav.kds'),          roles: ['OWNER','MANAGER','SUPERVISOR','CASHIER'] },
+        { to: '/kds',           icon: '👨‍🍳', label: t('nav.kds'),          roles: ['OWNER','MANAGER','SUPERVISOR','CASHIER','KITCHEN','BARISTA'] },
         { to: '/gaming',        icon: '🎮', label: t('nav.gaming'),       roles: ['OWNER','MANAGER','SUPERVISOR','CASHIER'] },
         { to: '/reservations',  icon: '📅', label: t('nav.reservations'), roles: ['OWNER','MANAGER','SUPERVISOR','CASHIER'] },
         { to: '/shifts',        icon: '🕐', label: t('nav.shifts'),       roles: ['OWNER','MANAGER','SUPERVISOR','CASHIER'] },
@@ -61,7 +61,7 @@ export default function AppShell() {
         { to: '/debt',          icon: '💳',  label: t('nav.debt'),         roles: ['OWNER','MANAGER','SUPERVISOR'] },
         { to: '/staff',         icon: '👤',  label: t('nav.staff'),        roles: ['OWNER','MANAGER'] },
         { to: '/reports',       icon: '📊',  label: t('nav.reports'),      roles: ['OWNER','MANAGER'] },
-        { to: '/order-history', icon: '🗂️', label: t('nav.orderHistory'), roles: ['OWNER','MANAGER','SUPERVISOR'] },
+        { to: '/order-history', icon: '🗂️', label: t('nav.orderHistory'), roles: ['OWNER','MANAGER','SUPERVISOR','KITCHEN','BARISTA'] },
         { to: '/activity-log',  icon: '📋',  label: t('nav.activityLog'),  roles: ['OWNER','MANAGER'] },
         { to: '/settings',      icon: '⚙️', label: t('nav.settings'),     roles: ['OWNER'] },
       ],

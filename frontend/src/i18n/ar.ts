@@ -191,8 +191,11 @@ const ar = {
   // ── Match Mode ──────────────────────────────────────────────────────────────
   matchMode: {
     title:          '⚡ وضع الماتش',
+    session:        'الجلسة',
     sessionTotal:   'إجمالي الجلسة',
     repeatLast:     '🔁 تكرار آخر أوردر',
+    noRepeat:       'مفيش أوردر سابق',
+    repeatHint:     '⚡ أضف الأصناف يدوياً',
     normalPOS:      '← الكاشير العادي',
     quickClose:     '⚡ إغلاق سريع (كاش)',
     otherPayment:   '💳 طريقة دفع تانية',
@@ -201,7 +204,13 @@ const ar = {
     tapToAdd:       'اضغط على الأصناف لإضافتها',
     clearCart:      'مسح',
     noProducts:     'مفيش أصناف متحددة لوضع الماتش',
-    noProductsHint: 'روح للمنيو وفعّل "متاح في وضع الماتش" على الأصناف',
+    noProductsHint: 'استخدم زرار إدارة الأصناف هنا',
+    manageItems:    '⚙️ الأصناف',
+    manageItemsTitle:'إدارة أصناف وضع الماتش',
+    saveItems:      'حفظ',
+    searchProducts: 'ابحث عن صنف...',
+    inMatchMode:    'في الماتش',
+    notInMatchMode: 'مش في الماتش',
   },
 
   // ── KDS ─────────────────────────────────────────────────────────────────────
@@ -211,8 +220,12 @@ const ar = {
     newOrder:    'جديد',
     preparing:   'شغال',
     ready:       'جاهز',
+    served:      'اتقدم',
     noOrders:    'مفيش أوردرات',
     minAgo:      'دقيقة',
+    items:       'أصناف',
+    allServed:   'كل تم',
+    allPrep:     'كل شغال',
   },
 
   // ── Shift ───────────────────────────────────────────────────────────────────
@@ -475,18 +488,23 @@ const ar = {
 
   // ── Staff ────────────────────────────────────────────────────────────────────
   staff: {
-    title:          'الموظفين',
-    addStaff:       'إضافة موظف',
-    editStaff:      'تعديل الموظف',
-    role:           'الوظيفة',
-    maxDiscount:    'أقصى خصم %',
-    owner:          'مالك',
-    manager:        'مدير',
-    supervisor:     'سوبرفايزر',
-    cashier:        'كاشير',
-    waiter:         'ويتر',
-    resetPassword:  'تغيير كلمة السر',
-    newPassword:    'كلمة السر الجديدة',
+    title:           'الموظفين',
+    addStaff:        'إضافة موظف',
+    editStaff:       'تعديل الموظف',
+    role:            'الوظيفة',
+    maxDiscount:     'أقصى خصم %',
+    owner:           'مالك',
+    manager:         'مدير',
+    supervisor:      'سوبرفايزر',
+    cashier:         'كاشير',
+    waiter:          'ويتر',
+    kitchen:         'كيتشن',
+    barista:         'باريستا',
+    resetPassword:   'تغيير كلمة السر',
+    newPassword:     'كلمة السر الجديدة',
+    passwordMismatch:'كلمة السر مش متطابقة',
+    passwordTooShort:'كلمة السر لازم تكون 6 حروف على الأقل',
+    passwordChanged: '✅ تم تغيير كلمة السر',
   },
 
   // ── Suppliers ────────────────────────────────────────────────────────────────

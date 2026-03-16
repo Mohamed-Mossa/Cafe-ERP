@@ -31,6 +31,14 @@ public class ReservationService {
     public List<Reservation> getForDate(LocalDate date) { return repo.findByReservationDateAndDeletedFalseOrderByReservationTime(date); }
     public List<Reservation> getUpcoming() { return repo.findByStatusAndDeletedFalseOrderByReservationDateAscReservationTimeAsc("CONFIRMED"); }
 
+    /** Returns CONFIRMED reservations starting in the next 60 minutes — used for floor page alert banner */
+    public List<Reservation> getUpcomingAlerts() {
+        LocalDate today = LocalDate.now();
+        LocalTime now   = LocalTime.now();
+        LocalTime inOneHour = now.plusMinutes(60);
+        return repo.findConfirmedInWindow(today, now, inOneHour);
+    }
+
     @Transactional
     public Reservation create(Map<String,Object> body) {
         UUID tableId = body.containsKey("tableId") && body.get("tableId") != null

@@ -17,6 +17,7 @@ public class KdsController {
 
     /** All open orders with kitchen-relevant lines only (excludes gaming fee lines) */
     @GetMapping("/orders")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('OWNER','MANAGER','SUPERVISOR','CASHIER','KITCHEN','BARISTA')")
     public ResponseEntity<ApiResponse<List<Order>>> getKitchenOrders() {
         List<Order> orders = orderRepo.findByStatusAndDeletedFalse(OrderStatus.OPEN);
 
@@ -33,6 +34,7 @@ public class KdsController {
 
     /** Update status of a single line: NEW→PREPARING→READY→SERVED */
     @PatchMapping("/lines/{lineId}/status")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('OWNER','MANAGER','SUPERVISOR','CASHIER','KITCHEN','BARISTA')")
     public ResponseEntity<ApiResponse<OrderLine>> updateLineStatus(
             @PathVariable UUID lineId,
             @RequestBody Map<String,String> body) {

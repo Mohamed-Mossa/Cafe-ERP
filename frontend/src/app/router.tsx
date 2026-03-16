@@ -34,6 +34,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RoleHome() {
+  const { role } = useAppSelector(s => s.auth);
+  // KITCHEN and BARISTA staff go straight to the KDS — no POS access
+  if (role === 'KITCHEN' || role === 'BARISTA') return <Navigate to="/kds" replace />;
+  return <Navigate to="/pos" replace />;
+}
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
@@ -44,7 +51,7 @@ export default function AppRouter() {
         {/* QR Menu is fully public — no auth required */}
         <Route path="/qr-menu" element={<QRMenuPage />} />
         <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/pos" replace />} />
+          <Route index element={<RoleHome />} />
           <Route path="pos"            element={<POSPage />} />
           <Route path="floor"          element={<FloorPage />} />
           <Route path="gaming"         element={<GamingPage />} />

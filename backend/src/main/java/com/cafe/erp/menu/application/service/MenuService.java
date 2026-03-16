@@ -33,7 +33,17 @@ public class MenuService {
         return productRepository.findByAvailableInMatchModeAndActiveAndDeletedFalse(true, true);
     }
     public List<Product> getAllProductsForManagement() {
-        return productRepository.findByDeletedFalseOrderByDisplayOrderAscNameAsc();
+        List<Product> products = productRepository.findByDeletedFalseOrderByDisplayOrderAscNameAsc();
+        // Build a category lookup map so we don't hit DB for every product
+        java.util.Map<java.util.UUID, String> catNames = categoryRepository.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        c -> c.getId(), c -> c.getName(), (a, b) -> a));
+        products.forEach(p -> {
+            if (p.getCategoryId() != null) {
+                p.setCategoryName(catNames.getOrDefault(p.getCategoryId(), ""));
+            }
+        });
+        return products;
     }
     @Transactional
     public Product createProduct(CreateProductRequest req) {

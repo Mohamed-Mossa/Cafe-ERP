@@ -24,10 +24,14 @@ const floorApi = baseApi.injectEndpoints({
     cancelBillRequest: b.mutation<any, string>({
       query: (id) => ({ url: `/floor/tables/${id}/cancel-bill-request`, method: 'POST' }), invalidatesTags: ['Order'],
     }),
+    getReservationAlerts: b.query<any, void>({
+      query: () => '/reservations/upcoming-alerts',
+      // Poll every 60 seconds so the banner stays fresh without hammering the server
+    }),
   }),
   overrideExisting: false,
 });
-const { useGetTablesQuery, useCreateTableMutation, useUpdateTableMutation, useDeleteTableMutation, useMergeTablesMutation, useRequestBillMutation, useCancelBillRequestMutation } = floorApi;
+const { useGetTablesQuery, useCreateTableMutation, useUpdateTableMutation, useDeleteTableMutation, useMergeTablesMutation, useRequestBillMutation, useCancelBillRequestMutation, useGetReservationAlertsQuery } = floorApi;
 
 const STATUS_STYLE: Record<string, string> = {
   'FREE':     'bg-green-50  border-green-300  text-green-800',
@@ -42,6 +46,8 @@ export default function FloorPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { data, isLoading } = useGetTablesQuery(undefined, { pollingInterval: 8000 });
+  const { data: alertsRes } = useGetReservationAlertsQuery(undefined, { pollingInterval: 60000 });
+  const reservationAlerts: any[] = alertsRes?.data || [];
   const [createTable] = useCreateTableMutation();
   const [updateTable] = useUpdateTableMutation();
   const [deleteTable] = useDeleteTableMutation();
@@ -142,6 +148,30 @@ export default function FloorPage() {
       </div>
 
       {msg && <div className={`mb-3 px-4 py-2 rounded-xl text-sm font-medium ${msg.startsWith('❌') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>{msg}</div>}
+
+      {/* 1-hour reservation alert banner */}
+      {reservationAlerts.length > 0 && (
+        <div className={`mb-3 px-4 py-3 bg-orange-50 border border-orange-300 rounded-xl flex items-start gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <span className="text-xl">⏰</span>
+          <div className="flex-1">
+            <div className="font-bold text-orange-800 text-sm">
+              {isRTL
+                ? `${reservationAlerts.length} حجز خلال ساعة — لو هتفتح أوردر على الطاولة دي، إتأكد الأول`
+                : `${reservationAlerts.length} reservation${reservationAlerts.length > 1 ? 's' : ''} in the next hour — check before opening new orders`}
+            </div>
+            <div className="mt-1 space-y-0.5">
+              {reservationAlerts.map((r: any) => (
+                <div key={r.id} className={`text-xs text-orange-700 flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                  <span className="font-bold">{r.reservationTime}</span>
+                  <span>{r.customerName}</span>
+                  {r.partySize && <span>({r.partySize} {isRTL ? 'أفراد' : 'guests'})</span>}
+                  {r.tableName && <span>— {r.tableName}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Merge mode banner */}
       {mergeSource && (

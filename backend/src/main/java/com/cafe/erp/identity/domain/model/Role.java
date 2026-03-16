@@ -5,5 +5,7 @@ public enum Role {
     MANAGER,
     SUPERVISOR,
     CASHIER,
-    WAITER
+    WAITER,
+    KITCHEN,   // Kitchen staff: KDS + order history only
+    BARISTA    // Barista: KDS + order history only (drinks focus)
 }
