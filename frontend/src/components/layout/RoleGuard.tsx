@@ -8,7 +8,7 @@ interface Props {
 }
 
 const ROLE_HIERARCHY: Record<Role, number> = {
-  OWNER: 0, MANAGER: 1, SUPERVISOR: 2, CASHIER: 3, WAITER: 4
+  OWNER: 0, MANAGER: 1, SUPERVISOR: 2, CASHIER: 3, WAITER: 4, KITCHEN: 4, BARISTA: 4
 }
 
 export function RoleGuard({ allowedRoles, children, fallback = null }: Props) {

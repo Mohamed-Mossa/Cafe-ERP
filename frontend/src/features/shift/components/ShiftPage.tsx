@@ -48,8 +48,12 @@ export default function ShiftPage() {
 
   const handleOpen = async () => {
     if (!openingBalance) return;
-    await openShift({ openingBalance: parseFloat(openingBalance) });
-    setOpeningBalance('');
+    try {
+      await openShift({ openingBalance: parseFloat(openingBalance) }).unwrap();
+      setOpeningBalance('');
+    } catch (e: any) {
+      alert(e?.data?.message || t('failed'));
+    }
   };
 
   const handleClose = async () => {
@@ -58,13 +62,15 @@ export default function ShiftPage() {
       const res = await closeShift({ shiftId: shift.id, actualCash: parseFloat(actualCash), closingNotes }).unwrap();
       setClosedResult(res?.data || res);
       setShowClose(false);
-    } catch (e: any) { alert(e?.data?.message || 'Failed to close shift'); }
+    } catch (e: any) { alert(e?.data?.message || t('failed')); }
   };
 
   const handleAddExpense = async () => {
     if (!shift || !expDesc || !expAmount) return;
-    await addExpense({ shiftId: shift.id, description: expDesc, amount: parseFloat(expAmount), category: expCategory });
-    setExpDesc(''); setExpAmount(''); setExpCategory('');
+    try {
+      await addExpense({ shiftId: shift.id, description: expDesc, amount: parseFloat(expAmount), category: expCategory }).unwrap();
+      setExpDesc(''); setExpAmount(''); setExpCategory('');
+    } catch (e: any) { alert(e?.data?.message || t('failed')); }
   };
 
   if (isLoading) return <div className="flex items-center justify-center h-full text-slate-400">Loading...</div>;
@@ -79,7 +85,7 @@ export default function ShiftPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
           <div className="text-center mb-6">
             <div className="text-5xl mb-2">🔒</div>
-            <h2 className="text-2xl font-black text-slate-800">Shift Closed</h2>
+            <h2 className="text-2xl font-black text-slate-800">{t('shift.closedAt')}</h2>
             <p className="text-slate-500 text-sm mt-1">{closedResult.cashierName}</p>
           </div>
           <div className="space-y-3 mb-6">
@@ -98,7 +104,7 @@ export default function ShiftPage() {
             <div className={`flex justify-between items-center py-3 px-4 rounded-xl ${
               isShort ? 'bg-red-50 border-2 border-red-300' : isOver ? 'bg-yellow-50 border-2 border-yellow-300' : 'bg-green-50 border-2 border-green-300'
             }`}>
-              <span className="font-bold text-slate-700">Cash Variance</span>
+              <span className="font-bold text-slate-700">{t('shift.variance')}</span>
               <div className="text-right">
                 <div className={`text-xl font-black ${isShort ? 'text-red-600' : isOver ? 'text-yellow-600' : 'text-green-600'}`}>
                   {variance > 0 ? '+' : ''}{formatCurrency(Math.abs(variance))}
@@ -111,7 +117,7 @@ export default function ShiftPage() {
           </div>
           {closedResult.closingNotes && (
             <div className="bg-slate-50 rounded-xl p-3 mb-4 text-sm text-slate-600">
-              <span className="font-semibold">Notes: </span>{closedResult.closingNotes}
+              <span className="font-semibold">{t('notes')}: </span>{closedResult.closingNotes}
             </div>
           )}
           <button onClick={() => setClosedResult(null)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl">
@@ -126,8 +132,8 @@ export default function ShiftPage() {
     <div className="flex items-center justify-center h-full">
       <div className="bg-white rounded-2xl shadow-sm p-8 w-full max-w-sm text-center">
         <div className="text-5xl mb-4">🕐</div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">No Active Shift</h2>
-        <p className="text-slate-500 text-sm mb-6">Enter opening cash to start your shift</p>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">{t('shift.noActiveShift')}</h2>
+        <p className="text-slate-500 text-sm mb-6">{t('shift.blindCloseHint')}</p>
         <input type="number" value={openingBalance} onChange={e => setOpeningBalance(e.target.value)}
           placeholder="Opening balance (EGP)" className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center text-lg font-bold mb-4 outline-none focus:ring-2 focus:ring-blue-500" />
         <button onClick={handleOpen} disabled={!openingBalance}
@@ -162,7 +168,7 @@ export default function ShiftPage() {
             <div className="bg-white rounded-2xl shadow-sm p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <div className="font-bold text-lg text-slate-800">Active Shift</div>
+                  <div className="font-bold text-lg text-slate-800">{t('shift.shiftOpen')}</div>
                   <div className="text-sm text-slate-500">{shift.cashierName} · Opened {new Date(shift.createdAt).toLocaleTimeString('en-EG', { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
                 <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold">● OPEN</span>
@@ -180,7 +186,7 @@ export default function ShiftPage() {
                 ))}
               </div>
               <div className="bg-blue-50 rounded-xl p-3 flex justify-between items-center mb-4">
-                <span className="text-sm font-semibold text-blue-700">Expected Cash in Drawer</span>
+                <span className="text-sm font-semibold text-blue-700">{t('shift.openingBalance')}</span>
                 <span className="text-xl font-black text-blue-800">
                   {formatCurrency((shift.openingBalance || 0) + (shift.totalSales || 0) - (shift.totalExpenses || 0))}
                 </span>
@@ -197,13 +203,13 @@ export default function ShiftPage() {
               <div className="flex gap-2 mb-2">
                 <input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Description *"
                   className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                <input value={expAmount} onChange={e => setExpAmount(e.target.value)} placeholder="Amount" type="number"
+                <input value={expAmount} onChange={e => setExpAmount(e.target.value)} placeholder={t('shift.amount')} type="number"
                   className="w-24 px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
               <div className="flex gap-2 mb-3">
                 <select value={expCategory} onChange={e => setExpCategory(e.target.value)}
                   className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="">Category (optional)</option>
+                  <option value="">{t('shift.categoryOptional')}</option>
                   {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <button onClick={handleAddExpense} disabled={!expDesc || !expAmount}
@@ -211,7 +217,7 @@ export default function ShiftPage() {
               </div>
               <div className="space-y-2 max-h-52 overflow-y-auto">
                 {expenses.length === 0
-                  ? <p className="text-sm text-slate-400 text-center py-4">No expenses recorded</p>
+                  ? <p className="text-sm text-slate-400 text-center py-4">{t('noData')}</p>
                   : expenses.map((e: any) => (
                     <div key={e.id} className="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl text-sm">
                       <div>
@@ -230,7 +236,7 @@ export default function ShiftPage() {
       {tab === 'history' && (
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-100">
-            <h3 className="font-bold text-slate-800">Past Shifts</h3>
+            <h3 className="font-bold text-slate-800">{t('shift.title')}</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -276,17 +282,17 @@ export default function ShiftPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="text-center mb-5">
               <div className="text-4xl mb-2">🔒</div>
-              <h2 className="text-xl font-bold text-slate-800">Blind Cash Count</h2>
+              <h2 className="text-xl font-bold text-slate-800">{t('shift.actualCash')}</h2>
               <p className="text-sm text-slate-500 mt-1">Count your drawer and enter the total — the variance will be revealed after.</p>
             </div>
             <input type="number" value={actualCash} onChange={e => setActualCash(e.target.value)}
               placeholder="Total cash in drawer (EGP)"
               className="w-full px-4 py-4 rounded-xl border-2 border-slate-200 text-center text-2xl font-black mb-3 outline-none focus:border-blue-500" autoFocus />
             <textarea value={closingNotes} onChange={e => setClosingNotes(e.target.value)}
-              placeholder="Closing notes (optional)" rows={2}
+              placeholder={t('shift.closingNotesOpt')} rows={2}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm mb-4 outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
             <div className="flex gap-3">
-              <button onClick={() => setShowClose(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 font-medium">Cancel</button>
+              <button onClick={() => setShowClose(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 font-medium">{t('cancel')}</button>
               <button onClick={handleClose} disabled={!actualCash}
                 className="flex-1 py-3 bg-red-500 hover:bg-red-600 disabled:bg-slate-300 text-white font-bold rounded-xl transition">
                 Close & See Variance

@@ -126,10 +126,17 @@ public class OrderController {
     }
 
     @PatchMapping("/{id}/lines/{lineId}")
-    public ResponseEntity<ApiResponse<Order>> updateLineNotes(
+    public ResponseEntity<ApiResponse<Order>> updateLine(
             @PathVariable UUID id, @PathVariable UUID lineId,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, Object> body) {
+        // Handle quantity change
+        if (body.containsKey("quantity")) {
+            int qty = Integer.parseInt(body.get("quantity").toString());
+            return ResponseEntity.ok(ApiResponse.success(orderService.updateLineQuantity(id, lineId, qty)));
+        }
+        // Handle notes only
+        String notes = body.containsKey("notes") ? body.get("notes").toString() : "";
         return ResponseEntity.ok(ApiResponse.success(
-            orderService.updateLineNotes(id, lineId, body.getOrDefault("notes", ""))));
+            orderService.updateLineNotes(id, lineId, notes)));
     }
 }

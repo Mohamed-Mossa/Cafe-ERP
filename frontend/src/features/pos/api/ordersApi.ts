@@ -61,6 +61,14 @@ export const ordersApi = baseApi.injectEndpoints({
         body: { notes },
       }),
     }),
+    updateLineQty: build.mutation<ApiResponse<Order>, { orderId: string; lineId: string; quantity: number }>({
+      query: ({ orderId, lineId, quantity }) => ({
+        url: `/orders/${orderId}/lines/${lineId}`,
+        method: 'PATCH',
+        body: { quantity },
+      }),
+      invalidatesTags: ['Order'],
+    }),
   }),
 });
 
@@ -69,4 +77,5 @@ export const {
   useAddLineMutation, useRemoveLineMutation, useApplyDiscountMutation,
   useApplyPromoMutation, useProcessPaymentMutation, useCancelOrderMutation,
   useTransferOrderMutation, useAttachCustomerMutation, useGetReceiptQuery, useUpdateLineNotesMutation,
+  useUpdateLineQtyMutation,
 } = ordersApi;

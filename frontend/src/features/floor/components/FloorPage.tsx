@@ -65,39 +65,39 @@ export default function FloorPage() {
   const [msg, setMsg] = useState('');
 
   const tables = data?.data || [];
-  const counts = tables.reduce((acc, t) => ({ ...acc, [t.status]: (acc[t.status] || 0) + 1 }), {} as Record<string, number>);
+  const counts = tables.reduce((acc, table) => ({ ...acc, [table.status]: (acc[table.status] || 0) + 1 }), {} as Record<string, number>);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
 
-  const handleTableClick = (t: CafeTable) => {
+  const handleTableClick = (table: CafeTable) => {
     if (mergeSource) {
-      if (mergeSource.id === t.id) { setMergeSource(null); return; }
-      if (t.status === 'OCCUPIED' || t.status === 'BILLING') {
-        if (confirm(`Merge "${mergeSource.name}" → "${t.name}"? All items from ${mergeSource.name} will be moved to ${t.name}.`)) {
-          mergeTables({ sourceTableId: mergeSource.id, targetTableId: t.id })
+      if (mergeSource.id === table.id) { setMergeSource(null); return; }
+      if (table.status === 'OCCUPIED' || table.status === 'BILLING') {
+        if (confirm(`${mergeSource.name} → ${table.name}?`)) {
+          mergeTables({ sourceTableId: mergeSource.id, targetTableId: table.id })
             .unwrap()
-            .then(() => { flash(`✅ Tables merged into ${t.name}`); })
-            .catch((e) => flash('❌ ' + (e?.data?.message || 'Merge failed')));
+            .then(() => { flash(`✅ ${t('floor.mergeTable')}`); })
+            .catch((e: any) => flash(`❌ ${e?.data?.message || t('failed')}`));
         }
         setMergeSource(null);
       } else {
-        flash('❌ Target table must have an open order');
+        flash(`❌ ${t('floor.occupied')}`);
         setMergeSource(null);
       }
       return;
     }
-    setContextTable(t);
+    setContextTable(table);
   };
 
-  const openPosForTable = (t: CafeTable) => {
+  const openPosForTable = (table: CafeTable) => {
     dispatch(clearCurrentOrder());
-    navigate('/pos', { state: { table: t } });
+    navigate('/pos', { state: { table } });
     setContextTable(null);
   };
 
-  const viewOrder = (t: CafeTable) => {
-    if (t.currentOrderId) {
-      window.open(`/receipt/${t.currentOrderId}`, '_blank');
+  const viewOrder = (table: CafeTable) => {
+    if (table.currentOrderId) {
+      window.open(`${window.location.pathname}#/receipt/${table.currentOrderId}`, '_blank');
     }
     setContextTable(null);
   };
@@ -108,8 +108,8 @@ export default function FloorPage() {
       await createTable({ name: addForm.name, capacity: parseInt(addForm.capacity) || 4 }).unwrap();
       setShowAddTable(false);
       setAddForm({ name: '', capacity: '4' });
-      flash('✅ Table added');
-    } catch { flash('❌ Failed to add table'); }
+      flash(`✅ ${t('floor.addTable')}`);
+    } catch { flash(`❌ ${t('failed')}`); }
   };
 
   const handleEditTable = async () => {
@@ -117,16 +117,16 @@ export default function FloorPage() {
     try {
       await updateTable({ id: showEditTable.id, name: editForm.name, capacity: parseInt(editForm.capacity) }).unwrap();
       setShowEditTable(null);
-      flash('✅ Table updated');
-    } catch { flash('❌ Failed to update table'); }
+      flash(`✅ ${t('floor.editTable')}`);
+    } catch { flash(`❌ ${t('failed')}`); }
   };
 
-  const handleDeleteTable = async (t: CafeTable) => {
-    if (!confirm(`Delete table "${t.name}"?`)) return;
+  const handleDeleteTable = async (table: CafeTable) => {
+    if (!confirm(`${t('delete')} "${table.name}"?`)) return;
     try {
-      await deleteTable(t.id).unwrap();
-      flash('✅ Table deleted');
-    } catch { flash('❌ Cannot delete table with active order'); }
+      await deleteTable(table.id).unwrap();
+      flash(`✅ ${t('deleted')}`);
+    } catch { flash(`❌ ${t('failed')}`); }
   };
 
   return (
@@ -222,7 +222,7 @@ export default function FloorPage() {
                   {(table.status === 'FREE' || table.status === 'RESERVED') && (
                     <button onClick={() => {
                         if (table.status === 'RESERVED') {
-                            if (!window.confirm(isRTL ? 'الطاولة دي محجوزة. متأكد إنك عايز تفتح أوردر؟' : 'This table is reserved. Are you sure you want to open an order?')) return;
+                            if (!window.confirm(isRTL ? 'الطاولة دي محجوزة؟' : `${t('confirm')}?`)) return;
                         }
                         openPosForTable(table);
                       }}

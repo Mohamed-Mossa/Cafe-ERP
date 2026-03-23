@@ -1,1 +1,10 @@
 .env
+.env.*
+!.env.example
+
+backend/target/
+frontend/dist/
+frontend/node_modules/
+
+.idea/
+.vscode/

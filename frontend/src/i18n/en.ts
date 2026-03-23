@@ -72,6 +72,7 @@ const en = {
     reservations: 'Reservations',
     shifts:       'Shifts',
     inventory:    'Inventory',
+    goodStock:      '✅ All stock levels OK',
     stockForecast:'Stock Forecast',
     suppliers:    'Suppliers',
     customers:    'Customers',
@@ -137,6 +138,12 @@ const en = {
     pointsBalance:  'Points Balance',
     changeAmount:   'Change',
     amountTendered: 'Amount Tendered',
+    addNote:        'Add note',
+    reference:      'Reference / Transaction ID',
+    stillNeeded:    'Still needed',
+    changeDue:      'Change due',
+    keepOrder:      'Keep Order',
+    totalEntered:   'Total entered',
   },
 
   // ── Floor ───────────────────────────────────────────────────────────────────
@@ -251,6 +258,9 @@ const en = {
     shiftOpen:      'Shift is Open',
     openedAt:       'Opened at',
     closedAt:       'Closed at',
+    amount:         'Amount',
+    categoryOptional:'Category (optional)',
+    closingNotesOpt: 'Closing notes (optional)',
   },
 
   // ── Inventory ───────────────────────────────────────────────────────────────
@@ -273,11 +283,18 @@ const en = {
     wastageReason:  'Reason',
     lowStock:       'Low Stock',
     outOfStock:     'Out of Stock',
+    goodStock:      '✅ All stock levels OK',
     stockForecast:  'Stock Forecast',
     daysLeft:       'Days Left',
     dailyUsage:     'Daily Usage',
     sku:            'SKU',
     category:       'Category',
+    selectSupplier: 'Select Supplier (optional)',
+    invoiceNumber:  'Invoice Number',
+    wastageReasonPh:'Reason (e.g. expired, spilled)',
+    notesReason:    'Notes / Reason',
+    skuOptional:    'SKU (optional)',
+    categoryPh:     'Category (e.g. Beverages, Food, Cleaning)',
   },
 
   // ── CRM ─────────────────────────────────────────────────────────────────────
@@ -298,6 +315,9 @@ const en = {
     silver:         'Silver',
     gold:           'Gold',
     platinum:       'Platinum',
+    allTiers:       'All Tiers',
+    pointsToRedeem: 'Points to redeem',
+    descOptional:   'Description (optional)',
   },
 
   // ── Memberships ─────────────────────────────────────────────────────────────
@@ -317,6 +337,8 @@ const en = {
     noPackages:     'No packages yet — create one above',
     exhausted:      'Exhausted',
     confirmSale:    'Confirm Sale',
+    searchCustomer: 'Search customer by name or phone...',
+    activePackagesFor: 'Active Packages for',
   },
 
   // ── Tournaments ─────────────────────────────────────────────────────────────
@@ -360,6 +382,7 @@ const en = {
     maintenance:    'MAINTENANCE',
     staff:          'STAFF',
     misc:           'MISC',
+    selectCategory: 'Select category',
   },
 
   // ── Debt ────────────────────────────────────────────────────────────────────
@@ -376,6 +399,7 @@ const en = {
     newBalance:     'New balance will be',
     noDebtors:      '✅ No customers in debt',
     limit:          'Limit',
+    noteOptional:   'Note (optional)',
   },
 
   // ── Reports ─────────────────────────────────────────────────────────────────
@@ -415,6 +439,21 @@ const en = {
     avgPerDay:      'Avg per Day',
     cashVariance:   'Cash Variance',
     selectRange:    'Select a date range and click Run',
+    shiftBreakdown: 'Shift Breakdown',
+    itemDetail:     'Item Detail',
+    topProductsTitle:'Top Products by Revenue',
+    classLabel:     'Classification:',
+    productClass:   'Product Classification',
+    ordersByHour:   'Orders by Hour',
+    ordersByDay:    'Orders by Day of Week',
+    turnoverByTable:'Turnover by Table',
+    revenueBySource:'Revenue by Source',
+    sessionsByDevice:'Sessions by Device',
+    revenueByDevice:'Revenue by Device',
+    sessionsByType: 'Sessions by Type',
+    valueByCategory:'Value by Category',
+    revenueByPayment:'Revenue by Payment Method',
+    revenueByOrderSrc:'Revenue by Order Source',
   },
 
   // ── Settings ─────────────────────────────────────────────────────────────────
@@ -442,6 +481,7 @@ const en = {
     saving:         'Saving...',
     saveSettings:   '💾 Save Settings',
     ownerNote:      '🔒 Settings can only be modified by the Owner.',
+    matchModePh:    'Leave blank to use products tagged in menu, or enter product UUIDs separated by commas...',
   },
 
   // ── Reservations ─────────────────────────────────────────────────────────────
@@ -463,6 +503,7 @@ const en = {
     completed:      'COMPLETED',
     cancelled:      'CANCELLED',
     noShow:         'NO_SHOW',
+    notesPlaceholder:'Notes...',
   },
 
   // ── Menu ────────────────────────────────────────────────────────────────────
@@ -485,6 +526,11 @@ const en = {
     disableProduct: 'Disable',
     matchModeFlag:  'Available in Match Mode',
     priceHistory:   'Price History',
+    searchNameSku:  'Search name or SKU...',
+    allCategories:  'All Categories',
+    recipeNotes:    'Recipe notes (preparation instructions)',
+    selectIngredient:'Select ingredient...',
+    reasonOptional: 'Reason (optional)',
   },
 
   // ── Staff ────────────────────────────────────────────────────────────────────
@@ -501,7 +547,10 @@ const en = {
     waiter:          'Waiter',
     kitchen:         'Kitchen',
     barista:         'Barista',
+    myPassword:      'My Password',
     resetPassword:   'Reset Password',
+    resetStaffPassword: 'Reset Staff Password',
+    myPasswordHelp:  'Change your own account password here. To reset another staff member, use the reset button on that user row.',
     newPassword:     'New Password',
     passwordMismatch:'Passwords do not match',
     passwordTooShort:'Password must be at least 6 characters',
@@ -512,6 +561,7 @@ const en = {
   suppliers: {
     title:          'Suppliers',
     addSupplier:    'Add Supplier',
+    editSupplier:   'Edit Supplier',
     contactPerson:  'Contact Person',
     address:        'Address',
   },
@@ -536,6 +586,10 @@ const en = {
     endTime:        'End Time',
     discountPct:    'Discount %',
     days:           'Days',
+    description:    'Description',
+    percentage:     'Percentage',
+    fixedAmount:    'Fixed Amount',
+    maxUsageCount:  'Max Usage Count',
   },
 
   // ── Activity Log ────────────────────────────────────────────────────────────
@@ -546,17 +600,19 @@ const en = {
     entity:    'Entity',
     details:   'Details',
     timestamp: 'Timestamp',
+    noActivity:'No activity logged yet',
   },
 
   // ── Order History ────────────────────────────────────────────────────────────
   orderHistory: {
-    title:     'Order History',
-    orderNo:   'Order #',
-    cashier:   'Cashier',
-    source:    'Source',
-    status:    'Status',
-    createdAt: 'Created',
-    closedAt:  'Closed',
+    title:      'Order History',
+    orderNo:    'Order #',
+    cashier:    'Cashier',
+    source:     'Source',
+    status:     'Status',
+    createdAt:  'Created',
+    closedAt:   'Closed',
+    allSources: 'All Sources',
   },
 
   // ── Receipt ──────────────────────────────────────────────────────────────────

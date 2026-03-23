@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -37,6 +39,7 @@ public class AuthService {
     private long refreshTokenExpiryMs;
 
     private static final String REFRESH_PREFIX = "refresh:";
+    private final Map<String, LocalRefreshToken> localRefreshTokens = new ConcurrentHashMap<>();
 
     @Transactional
     public AuthResponse login(LoginRequest request, String ipAddress) {
@@ -58,14 +61,8 @@ public class AuthService {
         String refreshToken = jwtService.generateRefreshToken(user);
 
         // Store refresh token in Redis keyed by userId (JwtService uses userId as subject)
-        redisTemplate.opsForValue().set(
-                REFRESH_PREFIX + user.getId().toString(),
-                refreshToken,
-                refreshTokenExpiryMs,
-                TimeUnit.MILLISECONDS
-        );
-
-        logActivity(user, "LOGIN", "User", null, "Login from " + ipAddress, ipAddress);
+        storeRefreshToken(user.getId().toString(), refreshToken);
+        logActivitySafely(user, "LOGIN", "User", null, "Login from " + ipAddress, ipAddress);
 
         return buildResponse(user, accessToken, refreshToken);
     }
@@ -79,7 +76,7 @@ public class AuthService {
         }
 
         String userId = jwtService.extractUserId(token);
-        String stored = redisTemplate.opsForValue().get(REFRESH_PREFIX + userId);
+        String stored = loadRefreshToken(userId);
 
         if (stored == null || !stored.equals(token)) {
             throw new BusinessException("Refresh token revoked or not found", HttpStatus.UNAUTHORIZED);
@@ -95,18 +92,13 @@ public class AuthService {
         String newAccessToken  = jwtService.generateAccessToken(user);
         // Rotate: issue a new refresh token and overwrite the old one in Redis
         String newRefreshToken = jwtService.generateRefreshToken(user);
-        redisTemplate.opsForValue().set(
-                REFRESH_PREFIX + userId,
-                newRefreshToken,
-                refreshTokenExpiryMs,
-                TimeUnit.MILLISECONDS
-        );
+        storeRefreshToken(userId, newRefreshToken);
 
         return buildResponse(user, newAccessToken, newRefreshToken);
     }
 
     public void logout(String userId) {
-        redisTemplate.delete(REFRESH_PREFIX + userId);
+        deleteRefreshToken(userId);
     }
 
     @Transactional
@@ -160,4 +152,67 @@ public class AuthService {
                 .ipAddress(ip)
                 .build());
     }
+
+    private void logActivitySafely(User user, String action, String entityType,
+                                   Object entityId, String details, String ip) {
+        try {
+            logActivity(user, action, entityType, entityId, details, ip);
+        } catch (RuntimeException e) {
+            log.warn("Activity log write failed for user {} during {}: {}", user.getUsername(), action, e.getMessage());
+        }
+    }
+
+    private void storeRefreshToken(String userId, String refreshToken) {
+        try {
+            redisTemplate.opsForValue().set(
+                    REFRESH_PREFIX + userId,
+                    refreshToken,
+                    refreshTokenExpiryMs,
+                    TimeUnit.MILLISECONDS
+            );
+            localRefreshTokens.remove(userId);
+        } catch (RuntimeException e) {
+            log.warn("Redis unavailable while storing refresh token for user {}. Falling back to local memory.", userId);
+            localRefreshTokens.put(userId, new LocalRefreshToken(
+                    refreshToken,
+                    System.currentTimeMillis() + refreshTokenExpiryMs
+            ));
+        }
+    }
+
+    private String loadRefreshToken(String userId) {
+        try {
+            String stored = redisTemplate.opsForValue().get(REFRESH_PREFIX + userId);
+            if (stored != null) {
+                localRefreshTokens.remove(userId);
+            }
+            return stored;
+        } catch (RuntimeException e) {
+            log.warn("Redis unavailable while reading refresh token for user {}. Using local fallback.", userId);
+            return getLocalRefreshToken(userId);
+        }
+    }
+
+    private void deleteRefreshToken(String userId) {
+        try {
+            redisTemplate.delete(REFRESH_PREFIX + userId);
+        } catch (RuntimeException e) {
+            log.warn("Redis unavailable while deleting refresh token for user {}. Clearing local fallback only.", userId);
+        }
+        localRefreshTokens.remove(userId);
+    }
+
+    private String getLocalRefreshToken(String userId) {
+        LocalRefreshToken localToken = localRefreshTokens.get(userId);
+        if (localToken == null) {
+            return null;
+        }
+        if (localToken.expiresAtMs() <= System.currentTimeMillis()) {
+            localRefreshTokens.remove(userId);
+            return null;
+        }
+        return localToken.token();
+    }
+
+    private record LocalRefreshToken(String token, long expiresAtMs) {}
 }

@@ -54,7 +54,7 @@ app:
     # Comma-separated list — override via CORS_ALLOWED_ORIGINS env var in production
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
 
-  reset-owner-password: true
+  reset-owner-password: false
   # Set to true ONCE to reset owner password to Admin@123, then set back to false and restart
 
   loyalty:

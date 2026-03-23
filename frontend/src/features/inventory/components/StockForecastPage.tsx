@@ -11,7 +11,7 @@ const forecastApi = baseApi.injectEndpoints({
 const { useGetStockForecastQuery } = forecastApi;
 
 function DaysBar({ days }: { days: number | null }) {
-  if (days === null) return <span className="text-xs text-slate-300">No usage data</span>;
+  if (days === null) return <span className="text-xs text-slate-300">No data</span>;
   const color = days <= 3 ? 'bg-red-500' : days <= 7 ? 'bg-orange-400' : days <= 14 ? 'bg-yellow-400' : 'bg-green-500';
   const width = Math.min(100, (days / 30) * 100);
   return (
@@ -28,7 +28,7 @@ function DaysBar({ days }: { days: number | null }) {
 
 function UrgencyBadge({ days }: { days: number | null }) {
   if (days === null) return null;
-  if (days === 0) return <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">OUT OF STOCK</span>;
+  if (days === 0) return <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">Out of stock</span>;
   if (days <= 3) return <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">🚨 Critical</span>;
   if (days <= 7) return <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">⚠️ Low</span>;
   if (days <= 14) return <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs font-bold">📉 Watch</span>;
@@ -36,6 +36,7 @@ function UrgencyBadge({ days }: { days: number | null }) {
 }
 
 export default function StockForecastPage() {
+  const { t } = useI18n();
   const { data, isLoading, refetch } = useGetStockForecastQuery();
   const items: any[] = data?.data || [];
 
@@ -85,7 +86,7 @@ export default function StockForecastPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {items.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-16 text-center text-slate-400">No inventory items found</td></tr>
+              <tr><td colSpan={6} className="px-4 py-16 text-center text-slate-400">{t('noData')}</td></tr>
             ) : items.map((item: any) => (
               <tr key={item.id} className={`hover:bg-slate-50 transition ${item.daysRemaining !== null && item.daysRemaining <= 3 ? 'bg-red-50/40' : ''}`}>
                 <td className="px-4 py-3 font-semibold text-slate-800">{item.name}</td>
@@ -99,7 +100,7 @@ export default function StockForecastPage() {
                 <td className="px-4 py-3 text-slate-600">
                   {parseFloat(item.avgDailyUsage) > 0
                     ? <>{parseFloat(item.avgDailyUsage).toFixed(3)} <span className="text-xs text-slate-400">{item.unit}/day</span></>
-                    : <span className="text-slate-300">No usage</span>}
+                    : <span className="text-slate-300">{t('noData')}</span>}
                 </td>
                 <td className="px-4 py-3 min-w-40">
                   <DaysBar days={item.daysRemaining} />

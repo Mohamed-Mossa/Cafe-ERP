@@ -10,6 +10,10 @@ export const axiosClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+const redirectToLogin = () => {
+  window.location.replace(`${window.location.pathname}#/login`);
+};
+
 // ─── Request interceptor — attach token ────────────────────────────────────
 axiosClient.interceptors.request.use(
   (config) => {
@@ -51,7 +55,7 @@ axiosClient.interceptors.response.use(
       
       if (!refreshToken) {
         store.dispatch(logout());
-        window.location.href = '/login';
+        redirectToLogin();
         return Promise.reject(error);
       }
 
@@ -66,7 +70,7 @@ axiosClient.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         store.dispatch(logout());
-        window.location.href = '/login';
+        redirectToLogin();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

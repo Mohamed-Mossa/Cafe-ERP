@@ -72,6 +72,7 @@ const ar = {
     reservations: 'الحجوزات',
     shifts:       'الشيفتات',
     inventory:    'المخزون',
+    goodStock:      '✅ كل المخزون تمام',
     stockForecast:'توقع المخزون',
     suppliers:    'الموردين',
     customers:    'العملاء',
@@ -137,6 +138,12 @@ const ar = {
     pointsBalance:  'رصيد النقاط',
     changeAmount:   'الباقي',
     amountTendered: 'المبلغ المدفوع',
+    addNote:        'إضافة ملاحظة',
+    reference:      'المرجع / رقم المعاملة',
+    stillNeeded:    'المتبقي للسداد',
+    changeDue:      'الباقي للعميل',
+    keepOrder:      'إبقاء الأوردر',
+    totalEntered:   'المبلغ المدخل',
   },
 
   // ── Floor ───────────────────────────────────────────────────────────────────
@@ -250,6 +257,9 @@ const ar = {
     shiftOpen:      'الشيفت مفتوح',
     openedAt:       'فُتح الساعة',
     closedAt:       'أُغلق الساعة',
+    amount:         'المبلغ',
+    categoryOptional:'الفئة (اختياري)',
+    closingNotesOpt: 'ملاحظات الإغلاق (اختياري)',
   },
 
   // ── Inventory ───────────────────────────────────────────────────────────────
@@ -272,11 +282,18 @@ const ar = {
     wastageReason:  'السبب',
     lowStock:       'مخزون منخفض',
     outOfStock:     'نفذ من المخزون',
+    goodStock:      '✅ كل المخزون تمام',
     stockForecast:  'توقع المخزون',
     daysLeft:       'أيام متبقية',
     dailyUsage:     'الاستهلاك اليومي',
     sku:            'كود الصنف',
     category:       'الفئة',
+    selectSupplier: 'اختار المورد (اختياري)',
+    invoiceNumber:  'رقم الفاتورة',
+    wastageReasonPh:'السبب (مثال: انتهت الصلاحية، انسكب)',
+    notesReason:    'ملاحظات / السبب',
+    skuOptional:    'كود الصنف (اختياري)',
+    categoryPh:     'الفئة (مثال: مشروبات، أكل، نظافة)',
   },
 
   // ── CRM ─────────────────────────────────────────────────────────────────────
@@ -297,6 +314,9 @@ const ar = {
     silver:         'فضة',
     gold:           'ذهب',
     platinum:       'بلاتينيوم',
+    allTiers:       'كل المستويات',
+    pointsToRedeem: 'النقاط المراد استبدالها',
+    descOptional:   'وصف (اختياري)',
   },
 
   // ── Memberships ─────────────────────────────────────────────────────────────
@@ -316,6 +336,8 @@ const ar = {
     noPackages:     'مفيش باقات لسه — ضيف باقة جديدة',
     exhausted:      'نفذت',
     confirmSale:    'تأكيد البيع',
+    searchCustomer: 'ابحث عن العميل بالاسم أو الموبايل...',
+    activePackagesFor: 'الباقات النشطة لـ',
   },
 
   // ── Tournaments ─────────────────────────────────────────────────────────────
@@ -359,6 +381,7 @@ const ar = {
     maintenance:    'صيانة',
     staff:          'الموظفين',
     misc:           'متنوعة',
+    selectCategory: 'اختار الفئة',
   },
 
   // ── Debt ────────────────────────────────────────────────────────────────────
@@ -375,6 +398,7 @@ const ar = {
     newBalance:     'الرصيد الجديد سيكون',
     noDebtors:      '✅ مفيش عملاء عليهم دين',
     limit:          'الحد',
+    noteOptional:   'ملاحظة (اختياري)',
   },
 
   // ── Reports ─────────────────────────────────────────────────────────────────
@@ -414,6 +438,21 @@ const ar = {
     avgPerDay:      'متوسط يومي',
     cashVariance:   'فرق الكاش',
     selectRange:    'اختار فترة زمنية واضغط تشغيل',
+    shiftBreakdown: 'تفاصيل الشيفتات',
+    itemDetail:     'تفاصيل الأصناف',
+    topProductsTitle:'أكتر الأصناف مبيعاً',
+    classLabel:     'التصنيف:',
+    productClass:   'تصنيف الأصناف',
+    ordersByHour:   'الأوردرات حسب الساعة',
+    ordersByDay:    'الأوردرات حسب اليوم',
+    turnoverByTable:'دوران حسب الطاولة',
+    revenueBySource:'الإيرادات حسب المصدر',
+    sessionsByDevice:'الجلسات حسب الجهاز',
+    revenueByDevice:'الإيرادات حسب الجهاز',
+    sessionsByType: 'الجلسات حسب النوع',
+    valueByCategory:'القيمة حسب الفئة',
+    revenueByPayment:'الإيرادات حسب طريقة الدفع',
+    revenueByOrderSrc:'الإيرادات حسب مصدر الأوردر',
   },
 
   // ── Settings ─────────────────────────────────────────────────────────────────
@@ -441,6 +480,7 @@ const ar = {
     saving:         'جاري الحفظ...',
     saveSettings:   '💾 حفظ الإعدادات',
     ownerNote:      '🔒 الإعدادات بتتعدل من المالك بس.',
+    matchModePh:    'اتركه فاضي لاستخدام المنتجات المحددة في المنيو، أو ادخل UUIDs مفصولة بفواصل...',
   },
 
   // ── Reservations ─────────────────────────────────────────────────────────────
@@ -462,6 +502,7 @@ const ar = {
     completed:      'منتهي',
     cancelled:      'ملغي',
     noShow:         'لم يحضر',
+    notesPlaceholder:'ملاحظات...',
   },
 
   // ── Menu ────────────────────────────────────────────────────────────────────
@@ -484,6 +525,11 @@ const ar = {
     disableProduct: 'إيقاف',
     matchModeFlag:  'متاح في وضع الماتش',
     priceHistory:   'سجل الأسعار',
+    searchNameSku:  'ابحث بالاسم أو الكود...',
+    allCategories:  'كل الأقسام',
+    recipeNotes:    'ملاحظات الوصفة (تعليمات التحضير)',
+    selectIngredient:'اختار المكوّن...',
+    reasonOptional: 'السبب (اختياري)',
   },
 
   // ── Staff ────────────────────────────────────────────────────────────────────
@@ -500,7 +546,10 @@ const ar = {
     waiter:          'ويتر',
     kitchen:         'كيتشن',
     barista:         'باريستا',
+    myPassword:      'كلمة السر بتاعتي',
     resetPassword:   'تغيير كلمة السر',
+    resetStaffPassword: 'إعادة تعيين كلمة سر موظف',
+    myPasswordHelp:  'غيّر كلمة السر الخاصة بحسابك من هنا. لو عايز تغيّر كلمة سر موظف تاني، استخدم زر إعادة التعيين في صف الموظف.',
     newPassword:     'كلمة السر الجديدة',
     passwordMismatch:'كلمة السر مش متطابقة',
     passwordTooShort:'كلمة السر لازم تكون 6 حروف على الأقل',
@@ -511,6 +560,7 @@ const ar = {
   suppliers: {
     title:          'الموردين',
     addSupplier:    'إضافة مورد',
+    editSupplier:   'تعديل المورد',
     contactPerson:  'الشخص المسؤول',
     address:        'العنوان',
   },
@@ -535,6 +585,10 @@ const ar = {
     endTime:        'وقت النهاية',
     discountPct:    'نسبة الخصم %',
     days:           'الأيام',
+    description:    'وصف',
+    percentage:     'نسبة مئوية',
+    fixedAmount:    'مبلغ ثابت',
+    maxUsageCount:  'أقصى عدد مرات الاستخدام',
   },
 
   // ── Activity Log ────────────────────────────────────────────────────────────
@@ -545,17 +599,19 @@ const ar = {
     entity:    'العنصر',
     details:   'التفاصيل',
     timestamp: 'الوقت',
+    noActivity:'مفيش نشاط مسجل لسه',
   },
 
   // ── Order History ────────────────────────────────────────────────────────────
   orderHistory: {
-    title:     'سجل الأوردرات',
-    orderNo:   'أوردر رقم',
-    cashier:   'الكاشير',
-    source:    'المصدر',
-    status:    'الحالة',
-    createdAt: 'تاريخ الإنشاء',
-    closedAt:  'تاريخ الإغلاق',
+    title:      'سجل الأوردرات',
+    orderNo:    'أوردر رقم',
+    cashier:    'الكاشير',
+    source:     'المصدر',
+    status:     'الحالة',
+    createdAt:  'تاريخ الإنشاء',
+    closedAt:   'تاريخ الإغلاق',
+    allSources: 'كل المصادر',
   },
 
   // ── Receipt ──────────────────────────────────────────────────────────────────

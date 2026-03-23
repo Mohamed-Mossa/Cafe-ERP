@@ -50,6 +50,7 @@ public class MembershipController {
     }
 
     @PostMapping("/customers/{customerId}/assign/{packageId}")
+    @PreAuthorize("hasAnyRole('OWNER','MANAGER','SUPERVISOR','CASHIER')")
     public ResponseEntity<?> assignPackage(@PathVariable UUID customerId, @PathVariable UUID packageId) {
         return ResponseEntity.ok(ApiResponse.success(service.assignPackage(customerId, packageId)));
     }

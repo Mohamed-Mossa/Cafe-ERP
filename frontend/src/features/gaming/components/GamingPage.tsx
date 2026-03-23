@@ -1,19 +1,27 @@
 import { useI18n } from '../../../i18n';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppSelector } from '../../../app/hooks';
 import { baseApi } from '../../../app/baseApi';
 import { Device, GamingSession, ApiResponse, Product } from '../../../types/api.types';
 import { formatCurrency } from '../../../utils/currency';
+import { canViewCustomerPhones, customerMetaText, customerPhoneHiddenLabel } from '../../../utils/customerPrivacy';
 
 const gamingApi = baseApi.injectEndpoints({
   endpoints: (b) => ({
     getDevices: b.query<ApiResponse<Device[]>, void>({ query: () => '/gaming/devices', providesTags: ['Gaming'] }),
     getActiveSessions: b.query<any, void>({ query: () => '/gaming/sessions/active', providesTags: ['Gaming'] }),
     startSession: b.mutation<any, any>({ query: (body) => ({ url: '/gaming/sessions', method: 'POST', body }), invalidatesTags: ['Gaming'] }),
+    searchCustomers: b.query<any, string>({ query: (q) => `/customers?search=${encodeURIComponent(q)}&size=10` }),
+    getActiveCustomerPackages: b.query<any, string>({ query: (customerId) => `/memberships/customers/${customerId}/active` }),
     switchType: b.mutation<any, { id: string; newType: string }>({
       query: ({ id, newType }) => ({ url: `/gaming/sessions/${id}/type`, method: 'PATCH', body: { newType } }), invalidatesTags: ['Gaming'],
     }),
     endSession: b.mutation<any, string>({ query: (id) => ({ url: `/gaming/sessions/${id}/end`, method: 'POST' }), invalidatesTags: ['Gaming'] }),
+    endSessionWithPackage: b.mutation<any, { id: string; customerPackageId: string }>({
+      query: ({ id, customerPackageId }) => ({ url: `/gaming/sessions/${id}/end-with-package`, method: 'POST', body: { customerPackageId } }),
+      invalidatesTags: ['Gaming'],
+    }),
     transferSession: b.mutation<any, { id: string; targetDeviceId: string }>({ query: ({ id, ...body }) => ({ url: `/gaming/sessions/${id}/transfer`, method: 'POST', body }), invalidatesTags: ['Gaming'] }),
     addFnbItem: b.mutation<any, { id: string; productId: string; quantity: number }>({
       query: ({ id, ...body }) => ({ url: `/gaming/sessions/${id}/order`, method: 'POST', body }), invalidatesTags: ['Gaming'],
@@ -28,7 +36,8 @@ const gamingApi = baseApi.injectEndpoints({
   overrideExisting: false,
 });
 const { useGetDevicesQuery, useGetActiveSessionsQuery, useStartSessionMutation, useSwitchTypeMutation,
-  useEndSessionMutation, useTransferSessionMutation, useAddFnbItemMutation, useCreateDeviceMutation, useUpdateDeviceMutation,
+  useSearchCustomersQuery, useGetActiveCustomerPackagesQuery, useEndSessionMutation, useEndSessionWithPackageMutation,
+  useTransferSessionMutation, useAddFnbItemMutation, useCreateDeviceMutation, useUpdateDeviceMutation,
   useDeleteDeviceMutation, useGetGamingProductsQuery } = gamingApi;
 
 function LiveTimer({ startedAt, alertMinutes = 5 }: { startedAt: string; alertMinutes?: number }) {
@@ -76,14 +85,26 @@ function LiveTimer({ startedAt, alertMinutes = 5 }: { startedAt: string; alertMi
   );
 }
 
+function packageMatchesSession(pkg: any, deviceType?: string, sessionType?: string) {
+  const packageDeviceType = String(pkg?.deviceType || 'ANY').toUpperCase();
+  const packageSessionType = String(pkg?.sessionType || 'ANY').toUpperCase();
+  const matchesDevice = !deviceType || packageDeviceType === 'ANY' || packageDeviceType === deviceType.toUpperCase();
+  const matchesSession = !sessionType || packageSessionType === 'ANY' || packageSessionType === sessionType.toUpperCase();
+  return matchesDevice && matchesSession;
+}
+
 export default function GamingPage() {
   const { t, isRTL } = useI18n();
   const navigate = useNavigate();
+  const role = useAppSelector(s => s.auth.role);
+  const canSeeCustomerPhone = canViewCustomerPhones(role);
+  const hiddenPhoneLabel = customerPhoneHiddenLabel(isRTL);
   const { data: devicesRes, isLoading } = useGetDevicesQuery(undefined, { pollingInterval: 10000 });
   const { data: sessionsRes } = useGetActiveSessionsQuery(undefined, { pollingInterval: 5000 });
   const { data: productsRes } = useGetGamingProductsQuery();
   const [startSession] = useStartSessionMutation();
   const [switchType] = useSwitchTypeMutation();
+  const [endSessionWithPackage] = useEndSessionWithPackageMutation();
   const [endSession] = useEndSessionMutation();
   const [transferSession] = useTransferSessionMutation();
   const [addFnbItem] = useAddFnbItemMutation();
@@ -100,7 +121,10 @@ export default function GamingPage() {
     setDeviceSessionTypes(prev => ({ ...prev, [deviceId]: type }));
   const [showFnb, setShowFnb] = useState<GamingSession | null>(null);
   const [showTransfer, setShowTransfer] = useState<GamingSession | null>(null);
+  const [endingSession, setEndingSession] = useState<GamingSession | null>(null);
   const [fnbSearch, setFnbSearch] = useState('');
+  const [startCustomerSearch, setStartCustomerSearch] = useState('');
+  const [startSelectedCustomer, setStartSelectedCustomer] = useState<any>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showEditDevice, setShowEditDevice] = useState<Device | null>(null);
   const [deviceForm, setDeviceForm] = useState({ name: '', type: 'PS4', singleRate: '30', multiRate: '50' });
@@ -109,45 +133,79 @@ export default function GamingPage() {
   const devices: Device[] = devicesRes?.data || [];
   const sessions: GamingSession[] = sessionsRes?.data || [];
   const products: Product[] = productsRes?.data || [];
+  const { data: customerSearchRes } = useSearchCustomersQuery(startCustomerSearch, {
+    skip: !selectedDevice || startCustomerSearch.length < 2,
+  });
+  const { data: activePackagesRes, isFetching: loadingPackages } = useGetActiveCustomerPackagesQuery(endingSession?.customerId!, {
+    skip: !endingSession?.customerId,
+  });
+  const customerOptions: any[] = customerSearchRes?.data?.customers || customerSearchRes?.data || [];
+  const activePackages: any[] = activePackagesRes?.data || [];
+  const endingDevice = endingSession ? devices.find(d => d.id === endingSession.deviceId) : null;
+  const compatiblePackages = endingSession
+    ? activePackages.filter(pkg => packageMatchesSession(pkg, endingDevice?.type, endingSession.currentType))
+    : [];
 
   const getSession = (deviceId: string) => sessions.find(s => s.deviceId === deviceId);
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
+  const resetStartSessionModal = () => {
+    setSelectedDevice(null);
+    setStartSelectedCustomer(null);
+    setStartCustomerSearch('');
+  };
 
   const handleStart = async (device: Device) => {
     try {
-      await startSession({ deviceId: device.id, sessionType: getDeviceType(device.id) }).unwrap();
-      setSelectedDevice(null);
-      flash('✅ Session started!');
-    } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+      await startSession({
+        deviceId: device.id,
+        sessionType: getDeviceType(device.id),
+        customerId: startSelectedCustomer?.id,
+      }).unwrap();
+      resetStartSessionModal();
+      flash(`✅ ${t('gaming.startSession')}`);
+    } catch (e: any) { flash('❌ ' + (e?.data?.message || t('failed'))); }
   };
 
-  const handleEnd = async (session: GamingSession) => {
-    if (!confirm(`End session on ${session.deviceName}? This will finalize charges and open payment.`)) return;
+  const finishSession = async (session: GamingSession, customerPackageId?: string) => {
     try {
-      const res = await endSession(session.id).unwrap();
+      const res = customerPackageId
+        ? await endSessionWithPackage({ id: session.id, customerPackageId }).unwrap()
+        : await endSession(session.id).unwrap();
       const linkedOrderId = res?.data?.linkedOrderId;
-      flash('✅ Session ended — redirecting to payment...');
+      setEndingSession(null);
+      flash(res?.data?.packageUsed
+        ? `✅ ${t('gaming.endSession')} · ${Number(res?.data?.deductedHours || 0).toFixed(2)}h from package`
+        : `✅ ${t('gaming.endSession')}`);
       setTimeout(() => {
         if (linkedOrderId) {
           navigate('/pos', { state: { gamingOrderId: linkedOrderId } });
         }
       }, 800);
-    } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+    } catch (e: any) { flash('❌ ' + (e?.data?.message || t('failed'))); }
+  };
+
+  const handleEnd = async (session: GamingSession) => {
+    if (!session.customerId) {
+      if (!confirm(`${t('gaming.endSession')} ${session.deviceName}?`)) return;
+      await finishSession(session);
+      return;
+    }
+    setEndingSession(session);
   };
 
   const handleSwitch = async (session: GamingSession) => {
     const newType = session.currentType === 'SINGLE' ? 'MULTI' : 'SINGLE';
     try {
       await switchType({ id: session.id, newType }).unwrap();
-      flash(`✅ Switched to ${newType}`);
-    } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+      flash(`✅ ${t('gaming.switchType')} → ${newType}`);
+    } catch (e: any) { flash('❌ ' + (e?.data?.message || t('failed'))); }
   };
 
   const handleAddFnb = async (session: GamingSession, productId: string) => {
     try {
       await addFnbItem({ id: session.id, productId, quantity: 1 }).unwrap();
-      flash('✅ Item added to session');
-    } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+      flash(`✅ ${t('pos.addItem')}`);
+    } catch (e: any) { flash('❌ ' + (e?.data?.message || t('failed'))); }
   };
 
   const handleTransferSession = async (targetDeviceId: string) => {
@@ -155,8 +213,8 @@ export default function GamingPage() {
     try {
       await transferSession({ id: showTransfer.id, targetDeviceId }).unwrap();
       setShowTransfer(null);
-      flash('✅ Session transferred!');
-    } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+      flash(`✅ ${t('gaming.transferDevice')}`);
+    } catch (e: any) { flash('❌ ' + (e?.data?.message || t('failed'))); }
   };
 
   const handleCreateDevice = async () => {
@@ -164,8 +222,8 @@ export default function GamingPage() {
       await createDevice(deviceForm).unwrap();
       setShowAddDevice(false);
       setDeviceForm({ name: '', type: 'PS4', singleRate: '30', multiRate: '50' });
-      flash('✅ Device added');
-    } catch { flash('❌ Failed'); }
+      flash(`✅ ${t('gaming.addDevice')}`);
+    } catch { flash(`❌ ${t('failed')}`); }
   };
 
   const handleUpdateDevice = async () => {
@@ -173,16 +231,16 @@ export default function GamingPage() {
     try {
       await updateDevice({ id: showEditDevice.id, ...deviceForm }).unwrap();
       setShowEditDevice(null);
-      flash('✅ Device updated');
-    } catch { flash('❌ Failed'); }
+      flash(`✅ ${t('gaming.editDevice')}`);
+    } catch { flash(`❌ ${t('failed')}`); }
   };
 
   const handleDeleteDevice = async (d: Device) => {
-    if (!confirm(`Delete device "${d.name}"?`)) return;
+    if (!confirm(`${t('delete')} "${d.name}"?`)) return;
     try {
       await deleteDevice(d.id).unwrap();
-      flash('✅ Device deleted');
-    } catch { flash('❌ Cannot delete device with active session'); }
+      flash(`✅ ${t('gaming.deleteDevice')}`);
+    } catch { flash(`❌ ${t('failed')}`); }
   };
 
   const ps4 = devices.filter(d => d.type === 'PS4');
@@ -247,6 +305,12 @@ export default function GamingPage() {
                                 {session.currentType === 'SINGLE' ? `👤 ${t('gaming.single')}` : `👥 ${t('gaming.multi')}`}
                               </span>
                             </div>
+                            {session.customerId && (
+                              <div className={`flex justify-between items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
+                                <span className="text-blue-200 text-xs">👤 Customer</span>
+                                <span className="text-xs font-semibold text-white">Linked</span>
+                              </div>
+                            )}
                             <div className={`flex justify-between items-center ${isRTL ? 'flex-row-reverse' : ''}`}>
                               <span className="text-blue-200 text-xs">{t('gaming.gamingFee')}</span>
                               <span className="font-bold text-white">{formatCurrency(session.gamingAmount || 0)}</span>
@@ -273,7 +337,7 @@ export default function GamingPage() {
                                 </button>
                               ))}
                             </div>
-                            <button onClick={() => { setSelectedDevice(device); }}
+                            <button onClick={() => { setSelectedDevice(device); setStartSelectedCustomer(null); setStartCustomerSearch(''); }}
                               className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition">
                               ▶ {t('gaming.startSession')}
                             </button>
@@ -301,18 +365,6 @@ export default function GamingPage() {
                           </div>
                         )}
 
-                        {/* Start confirm overlay */}
-                        {selectedDevice?.id === device.id && !isActive && (
-                          <div className="mt-3 bg-blue-800 rounded-xl p-3">
-                            <p className="text-blue-200 text-xs mb-2">{isRTL ? `هتبدأ ${getDeviceType(device.id) === 'SINGLE' ? t('gaming.single') : t('gaming.multi')} ؟` : `Start ${getDeviceType(device.id)} session?`}</p>
-                            <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                              <button onClick={() => setSelectedDevice(null)}
-                                className="flex-1 py-1.5 text-xs bg-white/20 text-white rounded-lg">{t('cancel')}</button>
-                              <button onClick={() => handleStart(device)}
-                                className="flex-1 py-1.5 text-xs bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg">Confirm</button>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -357,7 +409,7 @@ export default function GamingPage() {
                       <button onClick={() => { setShowEditDevice(d); setDeviceForm({ name: d.name, type: d.type, singleRate: String(d.singleRate), multiRate: String(d.multiRate) }); }}
                         className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-xs font-medium transition">Edit</button>
                       <button onClick={() => handleDeleteDevice(d)}
-                        className="px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg text-xs font-medium transition">Delete</button>
+                        className="px-3 py-1.5 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg text-xs font-medium transition">{t('delete')}</button>
                     </td>
                   </tr>
                 ))}
@@ -397,7 +449,7 @@ export default function GamingPage() {
                 </button>
               ))}
               {products.filter((p: Product) => !fnbSearch || p.name.toLowerCase().includes(fnbSearch.toLowerCase())).length === 0 && (
-                <div className="col-span-2 text-center text-slate-400 py-8">No products found</div>
+                <div className="col-span-2 text-center text-slate-400 py-8">{t('noData')}</div>
               )}
             </div>
             <div className="p-4 border-t border-slate-100 flex-shrink-0">
@@ -422,10 +474,123 @@ export default function GamingPage() {
                 </button>
               ))}
               {devices.filter(d => d.id !== showTransfer.deviceId && d.status !== 'ACTIVE').length === 0 && (
-                <p className="col-span-2 text-center text-slate-400 py-6">No free devices available</p>
+                <p className="col-span-2 text-center text-slate-400 py-6">{t('gaming.idle')}</p>
               )}
             </div>
-            <button onClick={() => setShowTransfer(null)} className="w-full py-2.5 border border-slate-200 rounded-xl text-slate-500 text-sm">Cancel</button>
+            <button onClick={() => setShowTransfer(null)} className="w-full py-2.5 border border-slate-200 rounded-xl text-slate-500 text-sm">{t('cancel')}</button>
+          </div>
+        </div>
+      )}
+
+      {selectedDevice && !getSession(selectedDevice.id) && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="font-bold text-lg mb-1">▶ {t('gaming.startSession')} - {selectedDevice.name}</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              {isRTL
+                ? `هتبدأ جلسة ${getDeviceType(selectedDevice.id) === 'SINGLE' ? t('gaming.single') : t('gaming.multi')}`
+                : `Starting a ${getDeviceType(selectedDevice.id).toLowerCase()} session.`}
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">{isRTL ? 'العميل اختياري' : 'Customer (optional)'}</label>
+                <input
+                  value={startCustomerSearch}
+                  onChange={e => { setStartCustomerSearch(e.target.value); if (startSelectedCustomer) setStartSelectedCustomer(null); }}
+                  placeholder={isRTL ? 'ابحث عن عميل...' : 'Search customer...'}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              {startSelectedCustomer ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-blue-800">{startSelectedCustomer.fullName}</div>
+                    <div className="text-xs text-blue-600">
+                      {customerMetaText(startSelectedCustomer.phone, startSelectedCustomer.tier, canSeeCustomerPhone, hiddenPhoneLabel)}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { setStartSelectedCustomer(null); setStartCustomerSearch(''); }}
+                    className="text-xs text-blue-500 hover:text-blue-700"
+                  >
+                    {t('edit')}
+                  </button>
+                </div>
+              ) : customerOptions.length > 0 ? (
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+                  {customerOptions.map((customer: any) => (
+                    <button
+                      key={customer.id}
+                      onClick={() => { setStartSelectedCustomer(customer); setStartCustomerSearch(customer.fullName); }}
+                      className="w-full px-3 py-2 text-left hover:bg-slate-50 transition"
+                    >
+                      <div className="font-semibold text-slate-800 text-sm">{customer.fullName}</div>
+                      <div className="text-xs text-slate-500">
+                        {customerMetaText(customer.phone, customer.tier, canSeeCustomerPhone, hiddenPhoneLabel)}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : startCustomerSearch.length >= 2 ? (
+                <div className="text-sm text-slate-400">{t('noData')}</div>
+              ) : null}
+              <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                {isRTL ? 'لو العميل عنده باقة، هتقدر تختارها وقت إنهاء الجلسة.' : 'If this customer has a package, you can use it when ending the session.'}
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={resetStartSessionModal}
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
+              <button onClick={() => handleStart(selectedDevice)}
+                className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm">{t('confirm')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {endingSession && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="font-bold text-lg mb-1">⏹ {t('gaming.endSession')} - {endingSession.deviceName}</h2>
+            <p className="text-sm text-slate-500 mb-4">
+              {isRTL ? 'اختار لو عايز تخصم الوقت من باقة العميل أو تتحاسب عادي.' : 'Choose whether to use a package or bill the session normally.'}
+            </p>
+            <div className="space-y-3">
+              {loadingPackages ? (
+                <div className="text-sm text-slate-400">{t('loading')}</div>
+              ) : compatiblePackages.length > 0 ? (
+                <div className="space-y-2">
+                  {compatiblePackages.map((pkg: any) => (
+                    <button
+                      key={pkg.id}
+                      onClick={() => finishSession(endingSession, pkg.id)}
+                      className="w-full rounded-xl border border-green-200 bg-green-50 hover:bg-green-100 px-4 py-3 text-left transition"
+                    >
+                      <div className="font-bold text-green-800">{pkg.packageName}</div>
+                      <div className="text-xs text-green-700">
+                        {Number(pkg.hoursRemaining || 0).toFixed(2)}h left · {pkg.deviceType}/{pkg.sessionType} · Expires {pkg.expiresAt}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : activePackages.length > 0 ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  {isRTL ? 'العميل عنده باقات، لكن مفيش واحدة مناسبة لنوع الجهاز أو نوع الجلسة دي.' : 'This customer has packages, but none match this device or session type.'}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                  {isRTL ? 'مفيش باقات صالحة للعميل ده حاليًا.' : 'This customer has no active packages right now.'}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setEndingSession(null)}
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
+              <button onClick={() => finishSession(endingSession)}
+                className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm">
+                {isRTL ? 'تحاسب عادي' : 'Charge Normally'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -460,7 +625,7 @@ export default function GamingPage() {
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={() => { setShowAddDevice(false); setShowEditDevice(null); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={showAddDevice ? handleCreateDevice : handleUpdateDevice}
                 disabled={!deviceForm.name}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold rounded-xl text-sm">

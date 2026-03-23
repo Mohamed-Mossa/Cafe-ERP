@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { baseApi } from '../../../app/baseApi';
+import { useI18n } from '../../../i18n';
 import { formatCurrency } from '../../../utils/currency';
 
 const qrApi = baseApi.injectEndpoints({
@@ -12,6 +13,7 @@ const qrApi = baseApi.injectEndpoints({
 const { useGetQrCategoriesQuery, useGetQrProductsQuery } = qrApi;
 
 export default function QRMenuPage() {
+  const { t } = useI18n();
   const { data: catRes } = useGetQrCategoriesQuery();
   const { data: prodRes } = useGetQrProductsQuery();
   const [activeCat, setActiveCat] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function QRMenuPage() {
           <div className="flex items-center gap-3 mb-3">
             <div className="text-3xl">☕</div>
             <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight">Our Menu</h1>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">{t('nav.menu')}</h1>
               <p className="text-xs text-slate-400">{allProducts.length} items available</p>
             </div>
           </div>
@@ -76,7 +78,7 @@ export default function QRMenuPage() {
         {Object.keys(grouped).length === 0 ? (
           <div className="text-center py-20 text-slate-400">
             <div className="text-5xl mb-3">🍽️</div>
-            <p className="font-medium">No items found</p>
+            <p className="font-medium">{t('noData')}</p>
           </div>
         ) : Object.entries(grouped).map(([catId, products]: [string, any]) => {
           const cat = categories.find((c: any) => c.id === catId);

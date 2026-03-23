@@ -61,31 +61,31 @@ export default function TournamentsPage() {
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
 
   const handleCreate = async () => {
-    if (!form.name || !form.tournamentDate) { flash('❌ Name and date required'); return; }
+    if (!form.name || !form.tournamentDate) { flash(`❌ ${t('required')}`); return; }
     try {
       await createTournament(form).unwrap();
       setShowCreateForm(false); setForm(BLANK_T);
-      flash('✅ Tournament created');
-    } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+      flash(`✅ ${t('saved')}`);
+    } catch (e: any) { flash('❌ ' + (e?.data?.message || t('failed'))); }
   };
 
   const handleRegister = async () => {
-    if (!playerForm.playerName) { flash('❌ Player name required'); return; }
+    if (!playerForm.playerName) { flash(`❌ ${t('required')}`); return; }
     try {
       await registerPlayer({ id: selectedId!, ...playerForm, feeAmount: detail?.tournament?.entryFee }).unwrap();
       setShowRegisterForm(false); setPlayerForm({ playerName: '', playerPhone: '', feePaid: false, notes: '' });
-      flash('✅ Player registered');
-    } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+      flash(`✅ ${t('saved')}`);
+    } catch (e: any) { flash('❌ ' + (e?.data?.message || t('failed'))); }
   };
 
   const toggleFeePaid = async (player: any) => {
     try { await updatePlayer({ playerId: player.id, feePaid: !player.feePaid }).unwrap(); }
-    catch { flash('❌ Failed'); }
+    catch { flash(`❌ ${t('failed')}`); }
   };
 
   const toggleCheckIn = async (player: any) => {
     try { await updatePlayer({ playerId: player.id, checkedIn: !player.checkedIn }).unwrap(); }
-    catch { flash('❌ Failed'); }
+    catch { flash(`❌ ${t('failed')}`); }
   };
 
   return (
@@ -139,11 +139,11 @@ export default function TournamentsPage() {
                 </div>
                 <div className="flex gap-2">
                   <select value={detail.tournament.status}
-                    onChange={async (e) => { try { await updateStatus({ id: selectedId, status: e.target.value }).unwrap(); } catch { flash('❌ Failed'); } }}
+                    onChange={async (e) => { try { await updateStatus({ id: selectedId, status: e.target.value }).unwrap(); } catch { flash(`❌ ${t('failed')}`); } }}
                     className="text-sm border border-slate-200 rounded-xl px-3 py-1.5 outline-none">
                     {['UPCOMING','ACTIVE','COMPLETED','CANCELLED'].map(s => <option key={s}>{s}</option>)}
                   </select>
-                  <button onClick={() => { if (confirm('Delete tournament?')) deleteTournament(selectedId).then(() => setSelectedId(null)); }}
+                  <button onClick={async () => { if (confirm(`${t('delete')}?`)) { try { await deleteTournament(selectedId).unwrap(); setSelectedId(null); flash('✅ Deleted'); } catch { flash('❌ Failed to delete'); } } }}
                     className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-500 rounded-xl text-xs transition">
                     🗑 Delete
                   </button>
@@ -177,7 +177,7 @@ export default function TournamentsPage() {
 
             <div className="flex-1 overflow-y-auto">
               {(!detail.players || detail.players.length === 0) ? (
-                <div className="text-center text-slate-400 py-8">No players registered yet</div>
+                <div className="text-center text-slate-400 py-8">{t('noData')}</div>
               ) : (
                 <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
                   <table className="w-full text-sm">
@@ -242,12 +242,12 @@ export default function TournamentsPage() {
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Max Players</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('tournaments.maxPlayers')}</label>
                   <input type="number" value={form.maxPlayers} onChange={e => setForm(p => ({ ...p, maxPlayers: e.target.value }))}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Prize Pool</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('tournaments.prizePool')}</label>
                   <input type="number" value={form.prizePool} onChange={e => setForm(p => ({ ...p, prizePool: e.target.value }))}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm" />
                 </div>
@@ -256,8 +256,8 @@ export default function TournamentsPage() {
                 rows={2} className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm resize-none" />
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => setShowCreateForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
-              <button onClick={handleCreate} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm">Create</button>
+              <button onClick={() => setShowCreateForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
+              <button onClick={handleCreate} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm">{t('create')}</button>
             </div>
           </div>
         </div>
@@ -280,8 +280,8 @@ export default function TournamentsPage() {
               </label>
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => setShowRegisterForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
-              <button onClick={handleRegister} className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm">Register</button>
+              <button onClick={() => setShowRegisterForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
+              <button onClick={handleRegister} className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm">{t('confirm')}</button>
             </div>
           </div>
         </div>

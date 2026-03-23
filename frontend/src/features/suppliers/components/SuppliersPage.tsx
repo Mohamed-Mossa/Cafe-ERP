@@ -32,7 +32,7 @@ export default function SuppliersPage() {
   const set = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }));
 
   const handleSave = async () => {
-    if (!form.name) { setError('Supplier name is required'); return; }
+    if (!form.name) { setError(t('required')); return; }
     setSaving(true); setError('');
     try {
       if (editTarget) { await updateSupplier({ id: editTarget.id, ...form }).unwrap(); setEditTarget(null); }
@@ -54,7 +54,7 @@ export default function SuppliersPage() {
 
       <div className="flex-1 bg-white rounded-2xl shadow-sm overflow-hidden">
         {isLoading ? <div className="flex items-center justify-center h-full text-slate-400">Loading...</div>
-        : suppliers.length === 0 ? <div className="flex items-center justify-center h-full text-slate-400">No suppliers yet</div>
+        : suppliers.length === 0 ? <div className="flex items-center justify-center h-full text-slate-400">{t('noData')}</div>
         : <div className="overflow-auto h-full">
           <table className="w-full">
             <thead className="bg-slate-50 sticky top-0">
@@ -75,8 +75,8 @@ export default function SuppliersPage() {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button onClick={() => openEdit(s)} className="text-xs px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium">Edit</button>
-                      <button onClick={async () => { if (confirm('Delete supplier?')) { await deleteSupplier(s.id); refetch(); } }}
-                        className="text-xs px-3 py-1 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg font-medium">Delete</button>
+                      <button onClick={async () => { if (confirm(`${t('delete')}?`)) { await deleteSupplier(s.id); refetch(); } }}
+                        className="text-xs px-3 py-1 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg font-medium">{t('delete')}</button>
                     </div>
                   </td>
                 </tr>
@@ -89,7 +89,7 @@ export default function SuppliersPage() {
       {(showCreate || editTarget) && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 className="font-bold text-lg mb-4">{editTarget ? 'Edit Supplier' : '🏭 New Supplier'}</h2>
+            <h2 className="font-bold text-lg mb-4">{editTarget ? `✏️ ${t('suppliers.editSupplier')}` : `🏭 ${t('suppliers.addSupplier')}`}</h2>
             {error && <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>}
             <div className="space-y-3">
               <input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Company Name *"
@@ -109,10 +109,10 @@ export default function SuppliersPage() {
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowCreate(false); setEditTarget(null); setError(''); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={handleSave} disabled={saving}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">
-                {saving ? 'Saving...' : editTarget ? 'Update' : 'Create'}
+                {saving ? t('loading') : editTarget ? t('update') : t('create')}
               </button>
             </div>
           </div>

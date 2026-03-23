@@ -12,12 +12,15 @@ const usersApi = baseApi.injectEndpoints({
     changePassword: b.mutation<any, { currentPassword: string; newPassword: string }>({
       query: (body) => ({ url: '/users/me/password', method: 'POST', body }),
     }),
+    resetUserPassword: b.mutation<any, { id: string; newPassword: string }>({
+      query: ({ id, newPassword }) => ({ url: `/users/${id}/password`, method: 'POST', body: { newPassword } }),
+    }),
     updateUser: b.mutation<any, { id: string } & any>({ query: ({ id, ...body }) => ({ url: `/users/${id}`, method: 'PATCH', body }) }),
     getActivityLog: b.query<any, void>({ query: () => '/users/activity-log' }),
   }),
   overrideExisting: false,
 });
-const { useGetAllUsersQuery, useCreateUserMutation, useToggleUserStatusMutation, useChangePasswordMutation, useUpdateUserMutation, useGetActivityLogQuery } = usersApi;
+const { useGetAllUsersQuery, useCreateUserMutation, useToggleUserStatusMutation, useChangePasswordMutation, useResetUserPasswordMutation, useUpdateUserMutation, useGetActivityLogQuery } = usersApi;
 
 const ROLES = ['CASHIER', 'WAITER', 'SUPERVISOR', 'MANAGER', 'OWNER', 'KITCHEN', 'BARISTA'];
 
@@ -36,13 +39,14 @@ type Tab = 'staff' | 'log' | 'password';
 
 export default function UsersPage() {
   const { t, isRTL } = useI18n();
-  const { role } = useSelector((s: RootState) => s.auth);
+  const { role, username } = useSelector((s: RootState) => s.auth);
   const { data: usersRes, isLoading, refetch } = useGetAllUsersQuery();
   const { data: logRes } = useGetActivityLogQuery(undefined, { skip: role !== 'OWNER' && role !== 'MANAGER' });
   const [createUser] = useCreateUserMutation();
   const [toggleStatus] = useToggleUserStatusMutation();
   const [updateUser] = useUpdateUserMutation();
   const [changePassword] = useChangePasswordMutation();
+  const [resetUserPassword] = useResetUserPasswordMutation();
 
   // Map role enum → translated display label
   const ROLE_LABEL: Record<string, string> = {
@@ -71,6 +75,10 @@ export default function UsersPage() {
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
+  const [resetTarget, setResetTarget] = useState<any>(null);
+  const [resetForm, setResetForm] = useState({ newPassword: '', confirm: '' });
+  const [resetError, setResetError] = useState('');
+  const [resetSaving, setResetSaving] = useState(false);
 
   const set = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }));
 
@@ -106,9 +114,33 @@ export default function UsersPage() {
     } catch (e: any) { setPwError(e?.data?.message || t('failed')); }
   };
 
+  const canResetStaffPassword = (user: any) => {
+    if ((role !== 'OWNER' && role !== 'MANAGER') || username === user.username) return false;
+    if (role === 'OWNER') return true;
+    return user.role !== 'OWNER' && user.role !== 'MANAGER';
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetTarget) return;
+    setResetError('');
+    if (!resetForm.newPassword) { setResetError(t('required')); return; }
+    if (resetForm.newPassword !== resetForm.confirm) { setResetError(t('staff.passwordMismatch')); return; }
+    if (resetForm.newPassword.length < 6) { setResetError(t('staff.passwordTooShort')); return; }
+    setResetSaving(true);
+    try {
+      await resetUserPassword({ id: resetTarget.id, newPassword: resetForm.newPassword }).unwrap();
+      setResetTarget(null);
+      setResetForm({ newPassword: '', confirm: '' });
+    } catch (e: any) {
+      setResetError(e?.data?.message || t('failed'));
+    } finally {
+      setResetSaving(false);
+    }
+  };
+
   const TABS: { key: Tab; label: string }[] = [
     { key: 'staff',    label: `👤 ${t('staff.title')}` },
-    { key: 'password', label: `🔑 ${t('staff.resetPassword')}` },
+    { key: 'password', label: `🔑 ${t('staff.myPassword')}` },
     ...(role === 'OWNER' || role === 'MANAGER' ? [{ key: 'log' as Tab, label: `📋 ${t('activityLog.title')}` }] : []),
   ];
 
@@ -166,6 +198,12 @@ export default function UsersPage() {
                         <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
                           <button onClick={() => { setEditTarget(u); setEditForm({ fullName: u.fullName, role: u.role, maxDiscountPercent: String(u.maxDiscountPercent) }); setEditError(''); }}
                             className="px-3 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium transition">{t('edit')}</button>
+                          {canResetStaffPassword(u) && (
+                            <button onClick={() => { setResetTarget(u); setResetForm({ newPassword: '', confirm: '' }); setResetError(''); }}
+                              className="px-3 py-1 text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg font-medium transition">
+                              {t('staff.resetStaffPassword')}
+                            </button>
+                          )}
                           <button onClick={async () => { await toggleStatus(u.id); refetch(); }}
                             className={`px-3 py-1 text-xs rounded-lg font-medium transition ${u.active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
                             {u.active ? t('inactive') : t('active')}
@@ -185,7 +223,8 @@ export default function UsersPage() {
       {tab === 'password' && (
         <div className="flex-1 flex items-start justify-center pt-8">
           <div className="bg-white rounded-2xl shadow-sm p-6 w-full max-w-sm">
-            <h2 className="font-bold text-lg mb-4">🔑 {t('staff.resetPassword')}</h2>
+            <h2 className="font-bold text-lg mb-2">🔑 {t('staff.myPassword')}</h2>
+            <p className="text-sm text-slate-500 mb-4">{t('staff.myPasswordHelp')}</p>
             {pwError && <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{pwError}</div>}
             {pwSuccess && <div className="mb-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-semibold">{pwSuccess}</div>}
             <div className="space-y-3">
@@ -317,7 +356,40 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      {resetTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="font-bold text-lg mb-2">🔑 {t('staff.resetStaffPassword')}</h2>
+            <p className="text-sm text-slate-500 mb-4">{resetTarget.fullName} (@{resetTarget.username})</p>
+            {resetError && <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{resetError}</div>}
+            <div className="space-y-3">
+              <input
+                type="password"
+                value={resetForm.newPassword}
+                onChange={e => setResetForm(p => ({ ...p, newPassword: e.target.value }))}
+                placeholder={`${t('staff.newPassword')} (min 6)`}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="password"
+                value={resetForm.confirm}
+                onChange={e => setResetForm(p => ({ ...p, confirm: e.target.value }))}
+                placeholder={t('confirm')}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => { setResetTarget(null); setResetError(''); }}
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
+              <button onClick={handleResetPassword} disabled={resetSaving}
+                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">
+                {resetSaving ? t('loading') : t('update')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

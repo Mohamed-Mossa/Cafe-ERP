@@ -1,10 +1,12 @@
 package com.cafe.erp.reporting.application.service;
 
+import com.cafe.erp.crm.presentation.rest.CustomerView;
 import com.cafe.erp.pos.infrastructure.persistence.OrderRepository;
 import com.cafe.erp.gaming.infrastructure.persistence.GamingSessionRepository;
 import com.cafe.erp.shift.infrastructure.persistence.ShiftRepository;
 import com.cafe.erp.inventory.infrastructure.persistence.InventoryItemRepository;
 import com.cafe.erp.crm.infrastructure.persistence.CustomerRepository;
+import com.cafe.erp.shared.infrastructure.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
@@ -141,6 +143,7 @@ public class ReportService {
 
     public Map<String, Object> getLoyaltyReport() {
         var customers = customerRepository.findAll().stream().filter(c -> !c.isDeleted()).toList();
+        boolean canViewPhone = SecurityUtils.hasRole("OWNER");
         int totalPoints = customers.stream().mapToInt(com.cafe.erp.crm.domain.model.Customer::getTotalPoints).sum();
         BigDecimal totalSpent = customers.stream()
             .map(com.cafe.erp.crm.domain.model.Customer::getTotalSpent)
@@ -149,7 +152,9 @@ public class ReportService {
         customers.forEach(c -> byTier.merge(c.getTier().name(), 1L, Long::sum));
         var topSpenders = customers.stream()
             .sorted((a,b) -> b.getTotalSpent().compareTo(a.getTotalSpent()))
-            .limit(10).toList();
+            .limit(10)
+            .map(customer -> CustomerView.from(customer, canViewPhone))
+            .toList();
         return Map.of("totalCustomers", customers.size(), "totalPointsInCirculation", totalPoints,
             "totalLifetimeSpend", totalSpent, "customersByTier", byTier, "topSpenders", topSpenders);
     }

@@ -1,5 +1,6 @@
 package com.cafe.erp.membership.application.service;
 
+import com.cafe.erp.crm.infrastructure.persistence.CustomerRepository;
 import com.cafe.erp.membership.domain.model.CustomerPackage;
 import com.cafe.erp.membership.domain.model.MembershipPackage;
 import com.cafe.erp.membership.infrastructure.persistence.CustomerPackageRepository;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class MembershipService {
     private final PackageRepository packageRepo;
     private final CustomerPackageRepository customerPkgRepo;
+    private final CustomerRepository customerRepository;
 
     // ── Package CRUD ──────────────────────────────────────────────────────────
     public List<MembershipPackage> getAllPackages() { return packageRepo.findByDeletedFalseOrderByName(); }
@@ -66,9 +68,22 @@ public class MembershipService {
             .stream().filter(p -> !p.getExpiresAt().isBefore(LocalDate.now())).toList();
     }
 
+    public CustomerPackage getUsableCustomerPackage(UUID customerId, UUID customerPackageId) {
+        CustomerPackage customerPackage = customerPkgRepo.findByIdAndCustomerIdAndDeletedFalse(customerPackageId, customerId)
+            .orElseThrow(() -> BusinessException.notFound("CustomerPackage"));
+        if (!customerPackage.isActive()) throw new BusinessException("Package is no longer active");
+        if (customerPackage.getExpiresAt().isBefore(LocalDate.now())) throw new BusinessException("Package has expired");
+        return customerPackage;
+    }
+
     @Transactional
     public CustomerPackage assignPackage(UUID customerId, UUID packageId) {
         MembershipPackage pkg = packageRepo.findById(packageId).orElseThrow(() -> BusinessException.notFound("Package"));
+        if (pkg.isDeleted() || !pkg.isActive()) {
+            throw new BusinessException("Package is not available for sale");
+        }
+        customerRepository.findByIdAndDeletedFalse(customerId)
+            .orElseThrow(() -> BusinessException.notFound("Customer"));
         var user = SecurityUtils.currentUser();
         CustomerPackage cp = CustomerPackage.builder()
             .customerId(customerId).packageId(packageId)
@@ -88,6 +103,8 @@ public class MembershipService {
     public CustomerPackage deductHours(UUID customerPackageId, BigDecimal hours) {
         CustomerPackage cp = customerPkgRepo.findById(customerPackageId)
             .orElseThrow(() -> BusinessException.notFound("CustomerPackage"));
+        if (hours == null || hours.compareTo(BigDecimal.ZERO) <= 0)
+            throw new BusinessException("Hours must be greater than zero");
         if (!cp.isActive()) throw new BusinessException("Package is no longer active");
         if (cp.getExpiresAt().isBefore(LocalDate.now())) throw new BusinessException("Package has expired");
         if (cp.getHoursRemaining().compareTo(hours) < 0)

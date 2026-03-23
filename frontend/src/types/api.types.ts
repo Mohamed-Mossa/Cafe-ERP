@@ -9,7 +9,7 @@ export interface User {
   maxDiscountPercent: number; active: boolean; pin?: string;
 }
 
-export type Role = 'OWNER' | 'MANAGER' | 'SUPERVISOR' | 'CASHIER' | 'WAITER';
+export type Role = 'OWNER' | 'MANAGER' | 'SUPERVISOR' | 'CASHIER' | 'WAITER' | 'KITCHEN' | 'BARISTA';
 
 export interface AuthResponse {
   accessToken: string; refreshToken: string;
@@ -61,9 +61,10 @@ export interface Device {
 
 export interface GamingSession {
   id: string; deviceId: string; deviceName: string;
+  customerId?: string;
   sessionType: 'SINGLE' | 'MULTI';
   currentType: 'SINGLE' | 'MULTI';
-  status: 'ACTIVE' | 'ENDED';
+  status: 'ACTIVE' | 'CLOSED';
   startedAt: string; endedAt?: string;
   durationMinutes?: number; totalAmount?: number;
   gamingAmount?: number;

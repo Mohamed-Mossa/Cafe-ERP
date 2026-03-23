@@ -7,6 +7,7 @@ import com.cafe.erp.gaming.infrastructure.persistence.DeviceRepository;
 import com.cafe.erp.gaming.infrastructure.persistence.GamingSessionRepository;
 import com.cafe.erp.identity.domain.model.User;
 import com.cafe.erp.identity.infrastructure.persistence.UserRepository;
+import com.cafe.erp.membership.application.service.MembershipService;
 import com.cafe.erp.pos.application.command.CreateOrderRequest;
 import com.cafe.erp.pos.application.service.OrderService;
 import com.cafe.erp.shared.infrastructure.exception.BusinessException;
@@ -29,6 +30,7 @@ public class GamingService {
     private final GamingSessionRepository sessionRepository;
     private final DeviceRepository deviceRepository;
     private final UserRepository userRepository;
+    private final MembershipService membershipService;
     private final OrderService orderService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -97,7 +99,16 @@ public class GamingService {
     }
 
     @Transactional
-    public GamingSession endSession(UUID sessionId) {
+    public EndSessionResult endSession(UUID sessionId) {
+        return closeSession(sessionId, null);
+    }
+
+    @Transactional
+    public EndSessionResult endSessionWithPackage(UUID sessionId, UUID customerPackageId) {
+        return closeSession(sessionId, customerPackageId);
+    }
+
+    private EndSessionResult closeSession(UUID sessionId, UUID customerPackageId) {
         GamingSession session = getActiveSession(sessionId);
         Device device = deviceRepository.findById(session.getDeviceId())
                 .orElseThrow(() -> BusinessException.notFound("Device"));
@@ -110,6 +121,9 @@ public class GamingService {
         BigDecimal total = session.getSegments().stream()
                 .map(s -> s.getAmount() != null ? s.getAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        int billableMinutes = session.getSegments().stream()
+                .mapToInt(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0)
+                .sum();
 
         session.setGamingAmount(total);
         int totalMins = (int) Duration.between(session.getStartedAt(), now).toMinutes();
@@ -117,10 +131,23 @@ public class GamingService {
         session.setEndedAt(now);
         session.setStatus(SessionStatus.CLOSED);
 
-        // Add gaming charge as a line item to the linked order.
-        // NOT wrapped in try-catch — if this fails the cashier must see the error.
-        // A swallowed exception here means the customer gets free gaming time with no trace.
-        if (session.getLinkedOrderId() != null && total.compareTo(BigDecimal.ZERO) > 0) {
+        boolean packageUsed = customerPackageId != null;
+        BigDecimal deductedHours = null;
+        UUID payableOrderId = session.getLinkedOrderId();
+
+        if (packageUsed) {
+            if (session.getCustomerId() == null) {
+                throw new BusinessException("This session has no customer attached");
+            }
+            var customerPackage = membershipService.getUsableCustomerPackage(session.getCustomerId(), customerPackageId);
+            validatePackageCompatibility(customerPackage, device, session);
+            deductedHours = BigDecimal.valueOf(billableMinutes)
+                    .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+            membershipService.deductHours(customerPackageId, deductedHours);
+        } else if (session.getLinkedOrderId() != null && total.compareTo(BigDecimal.ZERO) > 0) {
+            // Add gaming charge as a line item to the linked order.
+            // NOT wrapped in try-catch — if this fails the cashier must see the error.
+            // A swallowed exception here means the customer gets free gaming time with no trace.
             com.cafe.erp.pos.domain.model.Order linkedOrder =
                     orderService.getOrder(session.getLinkedOrderId());
             if (linkedOrder.getStatus() == com.cafe.erp.pos.domain.model.OrderStatus.OPEN) {
@@ -132,9 +159,20 @@ public class GamingService {
         deviceRepository.save(device);
         broadcastDeviceUpdate(device);
 
+        if (packageUsed && session.getLinkedOrderId() != null) {
+            var linkedOrder = orderService.getOrder(session.getLinkedOrderId());
+            if (linkedOrder.getStatus() == com.cafe.erp.pos.domain.model.OrderStatus.OPEN && linkedOrder.getLines().isEmpty()) {
+                orderService.cancelOrder(linkedOrder.getId(), "Package-covered gaming session with no payable items");
+                payableOrderId = null;
+            } else if (linkedOrder.getStatus() != com.cafe.erp.pos.domain.model.OrderStatus.OPEN) {
+                payableOrderId = null;
+            }
+        }
+
         log.info("Session ended for {}. Duration: {} min, Amount: {} EGP",
                 session.getDeviceName(), session.getTotalMinutes(), total);
-        return sessionRepository.save(session);
+        GamingSession saved = sessionRepository.save(session);
+        return new EndSessionResult(saved, payableOrderId, packageUsed, customerPackageId, deductedHours);
     }
 
     private void closeSegment(SessionSegment segment, LocalDateTime endTime) {
@@ -206,6 +244,26 @@ public class GamingService {
     private void addGamingFeeToOrder(java.util.UUID orderId, String deviceName, int minutes, BigDecimal amount) {
         orderService.addGamingFee(orderId, deviceName, minutes, amount);
         log.info("Added gaming fee {} EGP for device {} ({} min) to order {}", amount, deviceName, minutes, orderId);
+    }
+
+    private void validatePackageCompatibility(
+            com.cafe.erp.membership.domain.model.CustomerPackage customerPackage,
+            Device device,
+            GamingSession session
+    ) {
+        String packageDeviceType = customerPackage.getDeviceType();
+        if (packageDeviceType != null
+                && !"ANY".equalsIgnoreCase(packageDeviceType)
+                && !packageDeviceType.equalsIgnoreCase(device.getType().name())) {
+            throw new BusinessException("This package is only valid for " + packageDeviceType + " devices");
+        }
+
+        String packageSessionType = customerPackage.getSessionType();
+        if (packageSessionType != null
+                && !"ANY".equalsIgnoreCase(packageSessionType)
+                && !packageSessionType.equalsIgnoreCase(session.getCurrentType().name())) {
+            throw new BusinessException("This package is only valid for " + packageSessionType + " sessions");
+        }
     }
 
     // Returns the linked order ID for the session so frontend can redirect to payment

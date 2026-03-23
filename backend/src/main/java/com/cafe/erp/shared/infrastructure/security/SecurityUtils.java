@@ -20,6 +20,15 @@ public class SecurityUtils {
         throw new IllegalStateException("No authenticated user in security context");
     }
 
+    public static boolean hasRole(String role) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) {
+            return false;
+        }
+        String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        return auth.getAuthorities().stream().anyMatch(granted -> authority.equals(granted.getAuthority()));
+    }
+
     public static String currentUsername() {
         return currentUser().getUsername();
     }

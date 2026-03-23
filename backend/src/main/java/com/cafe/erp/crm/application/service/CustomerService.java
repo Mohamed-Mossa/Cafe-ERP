@@ -3,17 +3,21 @@ import com.cafe.erp.crm.application.command.*;
 import com.cafe.erp.crm.domain.model.*;
 import com.cafe.erp.crm.infrastructure.persistence.*;
 import com.cafe.erp.shared.infrastructure.exception.BusinessException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal; import java.math.RoundingMode;
 import java.util.List; import java.util.UUID;
 
-@Service @RequiredArgsConstructor
+@Service
 public class CustomerService {
     private final CustomerRepository customerRepository;
     private final PointTransactionRepository pointTxRepository;
+
+    public CustomerService(CustomerRepository customerRepository, PointTransactionRepository pointTxRepository) {
+        this.customerRepository = customerRepository;
+        this.pointTxRepository = pointTxRepository;
+    }
 
     @Value("${app.loyalty.points-per-100:10}") private int pointsPer100;
     @Value("${app.loyalty.points-to-egp-rate:0.10}") private BigDecimal pointsToEgpRate;

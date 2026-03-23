@@ -26,6 +26,7 @@ const METHOD_META: Record<PaymentMethod, { label: string; icon: string }> = {
 const blankEntry = (method: PaymentMethod = 'CASH', amount = ''): PayEntry => ({ method, amount, reference: '' });
 
 export default function PaymentModal({ order, onClose, onSuccess }: Props) {
+  const { t } = useI18n();
   const [entries, setEntries] = useState<PayEntry[]>([blankEntry('CASH', String(order.grandTotal))]);
   const [error, setError] = useState('');
   const [processPayment, { isLoading }] = useProcessPaymentMutation();
@@ -73,7 +74,7 @@ export default function PaymentModal({ order, onClose, onSuccess }: Props) {
         {/* Header */}
         <div className="p-5 border-b border-slate-100 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="font-bold text-lg text-slate-800">Process Payment</h2>
+            <h2 className="font-bold text-lg text-slate-800">{t('pos.pay')}</h2>
             <p className="text-xs text-slate-400 mt-0.5">
               Order #{order.orderNumber}
               {order.customerName && ` · ${order.customerName}`}
@@ -87,7 +88,7 @@ export default function PaymentModal({ order, onClose, onSuccess }: Props) {
         <div className="p-5 overflow-y-auto space-y-4 flex-1">
           {/* Amount due */}
           <div className="bg-slate-50 rounded-xl p-3 flex justify-between items-center">
-            <span className="text-sm text-slate-500">Total Due</span>
+            <span className="text-sm text-slate-500">{t('pos.grandTotal')}</span>
             <span className="text-2xl font-black text-slate-900">{formatCurrency(order.grandTotal)}</span>
           </div>
 
@@ -109,7 +110,7 @@ export default function PaymentModal({ order, onClose, onSuccess }: Props) {
                   Payment {entries.length > 1 ? `#${i + 1}` : ''}
                 </span>
                 {entries.length > 1 && (
-                  <button onClick={() => removeEntry(i)} className="text-red-400 hover:text-red-600 text-sm">Remove</button>
+                  <button onClick={() => removeEntry(i)} className="text-red-400 hover:text-red-600 text-sm">{t('delete')}</button>
                 )}
               </div>
               {/* Method selector */}
@@ -132,14 +133,14 @@ export default function PaymentModal({ order, onClose, onSuccess }: Props) {
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-purple-600">Available: {formatCurrency(availableCredit)}</span>
                   <button onClick={() => setEntry(i, { amount: String(Math.min(availableCredit, parseFloat(entry.amount) || order.grandTotal)) })}
-                    className="text-purple-600 underline hover:text-purple-800">Use max</button>
+                    className="text-purple-600 underline hover:text-purple-800">{t('pos.redeemPoints')}</button>
                 </div>
               )}
               {/* Amount */}
               <input type="number"
                 value={entry.amount}
                 onChange={e => setEntry(i, { amount: e.target.value })}
-                placeholder="Amount"
+                placeholder={t('pos.amount')}
                 className={`w-full px-3 py-2 border-2 rounded-xl text-xl font-black text-center outline-none ${
                   entry.method === 'CREDIT' && creditExceeded ? 'border-red-400 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
                 }`}
@@ -148,7 +149,7 @@ export default function PaymentModal({ order, onClose, onSuccess }: Props) {
               {(entry.method === 'CARD' || entry.method === 'EWALLET') && (
                 <input value={entry.reference}
                   onChange={e => setEntry(i, { reference: e.target.value })}
-                  placeholder="Reference / Transaction ID"
+                  placeholder={t('pos.reference')}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-400" />
               )}
             </div>
@@ -163,16 +164,16 @@ export default function PaymentModal({ order, onClose, onSuccess }: Props) {
           {/* Summary */}
           <div className="bg-slate-50 rounded-xl p-3 space-y-1">
             <div className="flex justify-between text-sm text-slate-500">
-              <span>Total entered</span><span className="font-semibold">{formatCurrency(totalEntered)}</span>
+              <span>{t('pos.totalEntered')}</span><span className="font-semibold">{formatCurrency(totalEntered)}</span>
             </div>
             {remaining > 0 && (
               <div className="flex justify-between text-sm text-red-500 font-semibold">
-                <span>Still needed</span><span>{formatCurrency(remaining)}</span>
+                <span>{t('pos.stillNeeded')}</span><span>{formatCurrency(remaining)}</span>
               </div>
             )}
             {entries.length === 1 && entries[0].method === 'CASH' && change > 0 && (
               <div className="flex justify-between text-sm text-green-600 font-bold">
-                <span>Change due</span><span>{formatCurrency(change)}</span>
+                <span>{t('pos.changeDue')}</span><span>{formatCurrency(change)}</span>
               </div>
             )}
           </div>
@@ -184,7 +185,7 @@ export default function PaymentModal({ order, onClose, onSuccess }: Props) {
 
         {/* Footer */}
         <div className="p-5 pt-0 flex gap-3 flex-shrink-0">
-          <button onClick={onClose} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm font-medium">Cancel</button>
+          <button onClick={onClose} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm font-medium">{t('cancel')}</button>
           <button onClick={handleConfirm} disabled={isLoading || !isExact || creditExceeded}
             className="flex-1 py-3 bg-green-500 hover:bg-green-600 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black rounded-xl transition">
             {isLoading ? '...' : `✓ Confirm ${formatCurrency(order.grandTotal)}`}

@@ -1,14 +1,16 @@
 import { useParams } from 'react-router-dom';
 import { useGetReceiptQuery } from '../../pos/api/ordersApi';
+import { useI18n } from '../../../i18n';
 import { formatCurrency } from '../../../utils/currency';
 
 export default function ReceiptPage() {
+  const { t } = useI18n();
   const { id } = useParams<{ id: string }>();
   const { data, isLoading } = useGetReceiptQuery(id!);
   const order = data?.data;
 
   if (isLoading) return <div className="flex items-center justify-center h-full text-slate-400">Loading receipt...</div>;
-  if (!order) return <div className="flex items-center justify-center h-full text-red-400">Order not found</div>;
+  if (!order) return <div className="flex items-center justify-center h-full text-red-400">{t('noData')}</div>;
 
   const paidOn = order.closedAt ? new Date(order.closedAt as any).toLocaleString('en-EG') : '—';
 
@@ -18,8 +20,8 @@ export default function ReceiptPage() {
         {/* Header */}
         <div className="bg-slate-900 text-white text-center p-5">
           <div className="text-2xl mb-1">☕</div>
-          <div className="font-black text-lg tracking-tight">Cafe ERP</div>
-          <div className="text-xs text-slate-400 mt-1">Tax Invoice</div>
+          <div className="font-black text-lg tracking-tight">{t('appName')}</div>
+          <div className="text-xs text-slate-400 mt-1">{t('receipt.receipt')}</div>
         </div>
 
         <div className="p-4 space-y-3 font-mono text-xs">
@@ -27,16 +29,16 @@ export default function ReceiptPage() {
           <div className="border-b border-dashed border-slate-200 pb-3 space-y-1">
             <div className="flex justify-between"><span className="text-slate-400">Order #</span><span className="font-bold">{order.orderNumber}</span></div>
             <div className="flex justify-between"><span className="text-slate-400">Date</span><span>{paidOn}</span></div>
-            <div className="flex justify-between"><span className="text-slate-400">Cashier</span><span>{order.cashierName}</span></div>
-            {order.tableName && <div className="flex justify-between"><span className="text-slate-400">Table</span><span>{order.tableName}</span></div>}
-            {order.customerName && <div className="flex justify-between"><span className="text-slate-400">Customer</span><span>{order.customerName}</span></div>}
+            <div className="flex justify-between"><span className="text-slate-400">{t('receipt.cashier')}</span><span>{order.cashierName}</span></div>
+            {order.tableName && <div className="flex justify-between"><span className="text-slate-400">{t('receipt.table')}</span><span>{order.tableName}</span></div>}
+            {order.customerName && <div className="flex justify-between"><span className="text-slate-400">{t('pos.customer')}</span><span>{order.customerName}</span></div>}
             <div className="flex justify-between"><span className="text-slate-400">Type</span><span>{order.source}</span></div>
           </div>
 
           {/* Items */}
           <div className="space-y-1.5">
             <div className="flex justify-between text-slate-400 text-[10px] uppercase font-bold tracking-wide">
-              <span>Item</span><span>Total</span>
+              <span>{t('receipt.item')}</span><span>{t('receipt.total')}</span>
             </div>
             {order.lines.map(line => (
               <div key={line.id} className="flex justify-between">
@@ -51,7 +53,7 @@ export default function ReceiptPage() {
 
           {/* Totals */}
           <div className="border-t border-dashed border-slate-200 pt-3 space-y-1">
-            <div className="flex justify-between"><span className="text-slate-400">Subtotal</span><span>{formatCurrency(order.subtotal)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-400">{t('receipt.subtotal')}</span><span>{formatCurrency(order.subtotal)}</span></div>
             {order.discountAmount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>Discount {order.promoCodeApplied ? `(${order.promoCodeApplied})` : ''}</span>
@@ -60,7 +62,7 @@ export default function ReceiptPage() {
             )}
             {order.taxAmount > 0 && <div className="flex justify-between"><span className="text-slate-400">Tax</span><span>{formatCurrency(order.taxAmount)}</span></div>}
             <div className="flex justify-between font-black text-base border-t border-slate-200 pt-1 mt-1">
-              <span>TOTAL</span><span>{formatCurrency(order.grandTotal)}</span>
+              <span>{t('receipt.grandTotal')}</span><span>{formatCurrency(order.grandTotal)}</span>
             </div>
           </div>
 
@@ -85,8 +87,8 @@ export default function ReceiptPage() {
 
           {/* Footer */}
           <div className="border-t border-dashed border-slate-200 pt-3 text-center text-slate-400 text-[10px]">
-            <div>Thank you for visiting!</div>
-            <div className="mt-1">Powered by Cafe ERP</div>
+            <div>{t('receipt.thankYou')}</div>
+            <div className="mt-1">{t('appName')}</div>
           </div>
         </div>
 

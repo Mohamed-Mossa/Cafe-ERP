@@ -56,6 +56,7 @@ export default function MatchModePage() {
   const [sessionStart] = useState(Date.now());
   const [msg, setMsg] = useState('');
   const [lastOrderTotal, setLastOrderTotal] = useState<number | null>(null);
+  const [lastCart, setLastCart] = useState<CartItem[]>([]);
   const [showPayModal, setShowPayModal] = useState(false);
   const [sessionTotal, setSessionTotal] = useState(0);
   const [showManageModal, setShowManageModal] = useState(false);
@@ -111,12 +112,13 @@ export default function MatchModePage() {
   };
 
   const repeatLastOrder = () => {
-    if (!lastOrderTotal) { flash(t('matchMode.noRepeat')); return; }
-    flash(t('matchMode.repeatHint'));
+    if (!lastCart.length) { flash(t('matchMode.noRepeat')); return; }
+    setCart(lastCart.map(i => ({ ...i })));
+    flash(`🔁 ${lastCart.length} ${t('pos.items')} ${t('pos.addItem').toLowerCase()}`);
   };
 
   const quickClose = async () => {
-    if (cart.length === 0) { flash('❌ Cart is empty'); return; }
+    if (cart.length === 0) { flash(`❌ ${t('pos.empty')}`); return; }
     try {
       let oid = orderId;
       if (!oid) {
@@ -129,6 +131,7 @@ export default function MatchModePage() {
       }
       await closeOrder({ orderId: oid!, payments: [{ method: 'CASH', amount: cartTotal }] }).unwrap();
       setLastOrderTotal(cartTotal);
+      setLastCart([...cart]);
       setSessionTotal(s => s + cartTotal);
       setCart([]);
       setOrderId(null);
@@ -269,6 +272,7 @@ export default function MatchModePage() {
                   }
                   await closeOrder({ orderId: oid!, payments: [{ method, amount: cartTotal }] }).unwrap();
                   setLastOrderTotal(cartTotal);
+                  setLastCart([...cart]);
                   setSessionTotal(s => s + cartTotal);
                   setCart([]);
                   setOrderId(null);

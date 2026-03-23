@@ -4,7 +4,7 @@ import { baseApi } from '../../../app/baseApi';
 
 const resApi = baseApi.injectEndpoints({
   endpoints: (b) => ({
-    getAllReservations: b.query<any, void>({ query: () => '/reservations' }),
+    getReservationsByDate: b.query<any, string>({ query: (date) => `/reservations/date/${date}` }),
     getTablesForRes: b.query<any, void>({ query: () => '/floor/tables' }),
     createReservation: b.mutation<any, any>({ query: (body) => ({ url: '/reservations', method: 'POST', body }) }),
     updateResStatus: b.mutation<any, { id: string; status: string }>({
@@ -15,7 +15,7 @@ const resApi = baseApi.injectEndpoints({
   }),
   overrideExisting: false,
 });
-const { useGetAllReservationsQuery, useGetTablesForResQuery, useCreateReservationMutation, useUpdateResStatusMutation, useMarkDepositPaidMutation, useDeleteReservationMutation } = resApi;
+const { useGetReservationsByDateQuery, useGetTablesForResQuery, useCreateReservationMutation, useUpdateResStatusMutation, useMarkDepositPaidMutation, useDeleteReservationMutation } = resApi;
 
 const STATUS_STYLE: Record<string, string> = {
   PENDING:   'bg-yellow-50 text-yellow-700 border-yellow-200',
@@ -30,7 +30,8 @@ const BLANK = { customerName: '', customerPhone: '', tableId: '', tableName: '',
 
 export default function ReservationsPage() {
   const { t, isRTL } = useI18n();
-  const { data, isLoading, refetch } = useGetAllReservationsQuery();
+  const [selectedDate, setSelectedDate] = useState(today);
+  const { data, isLoading, refetch } = useGetReservationsByDateQuery(selectedDate);
   const { data: tablesRes } = useGetTablesForResQuery();
   const [create] = useCreateReservationMutation();
   const [updateStatus] = useUpdateResStatusMutation();
@@ -49,7 +50,7 @@ export default function ReservationsPage() {
 
   const handleCreate = async () => {
     if (!form.customerName || !form.customerPhone || !form.reservationDate || !form.reservationTime) {
-      setError('Name, phone, date and time are required'); return;
+      setError(t('required')); return;
     }
     setSaving(true); setError('');
     try {
@@ -64,11 +65,19 @@ export default function ReservationsPage() {
   return (
     <div className="h-full flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">📅 Reservations</h1>
-        <button onClick={() => { setShowCreate(true); setError(''); }}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm">
-          + New Reservation
-        </button>
+        <h1 className="text-xl font-bold text-slate-800">📅 {t('reservations.title')}</h1>
+        <div className="flex items-center gap-2">
+          <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)}
+            className="px-3 py-1.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+          <button onClick={() => setSelectedDate(today)}
+            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition">
+            {t('today')}
+          </button>
+          <button onClick={() => { setShowCreate(true); setError(''); }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm">
+            {t('reservations.newReservation')}
+          </button>
+        </div>
       </div>
 
       {/* Filter tabs */}
@@ -86,7 +95,7 @@ export default function ReservationsPage() {
         {isLoading ? (
           <div className="flex items-center justify-center h-full text-slate-400">Loading...</div>
         ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-slate-400">No reservations found</div>
+          <div className="flex items-center justify-center h-full text-slate-400">{t('noData')}</div>
         ) : (
           <div className="overflow-auto h-full">
             <table className="w-full">
@@ -119,9 +128,9 @@ export default function ReservationsPage() {
                           {r.depositPaid
                             ? <span className="text-xs text-green-600 font-bold">✓ Paid</span>
                             : <button onClick={async () => { await markDeposit(r.id); refetch(); }}
-                                className="text-xs text-amber-600 hover:text-amber-800 font-bold">Mark Paid</button>}
+                                className="text-xs text-amber-600 hover:text-amber-800 font-bold">{t('reservations.depositPaid')}</button>}
                         </div>
-                      ) : <span className="text-xs text-slate-300">No deposit</span>}
+                      ) : <span className="text-xs text-slate-300">{t('noData')}</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold border ${STATUS_STYLE[r.status] || ''}`}>{r.status}</span>
@@ -130,11 +139,11 @@ export default function ReservationsPage() {
                       <div className="flex gap-1 flex-wrap">
                         {r.status === 'PENDING' && (
                           <button onClick={async () => { await updateStatus({ id: r.id, status: 'CONFIRMED' }); refetch(); }}
-                            className="text-xs px-2 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-medium">Confirm</button>
+                            className="text-xs px-2 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg font-medium">{t('confirm')}</button>
                         )}
                         {r.status === 'CONFIRMED' && (
                           <button onClick={async () => { await updateStatus({ id: r.id, status: 'SEATED' }); refetch(); }}
-                            className="text-xs px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-medium">Seated</button>
+                            className="text-xs px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-medium">{t('reservations.seated')}</button>
                         )}
                         {r.status === 'SEATED' && (
                           <button onClick={async () => { await updateStatus({ id: r.id, status: 'COMPLETED' }); refetch(); }}
@@ -142,10 +151,10 @@ export default function ReservationsPage() {
                         )}
                         {!['COMPLETED','CANCELLED'].includes(r.status) && (
                           <button onClick={async () => { await updateStatus({ id: r.id, status: 'CANCELLED' }); refetch(); }}
-                            className="text-xs px-2 py-1 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg font-medium">Cancel</button>
+                            className="text-xs px-2 py-1 bg-red-50 text-red-500 hover:bg-red-100 rounded-lg font-medium">{t('cancel')}</button>
                         )}
                         {['COMPLETED','CANCELLED'].includes(r.status) && (
-                          <button onClick={async () => { if (confirm('Delete this reservation permanently?')) { await deleteRes(r.id); refetch(); } }}
+                          <button onClick={async () => { if (confirm(`${t('delete')}?`)) { await deleteRes(r.id); refetch(); } }}
                             className="text-xs px-2 py-1 bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg font-medium">🗑 Delete</button>
                         )}
                       </div>
@@ -183,7 +192,7 @@ export default function ReservationsPage() {
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Party Size</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('reservations.partySize')}</label>
                   <input type="number" value={form.partySize} onChange={e => set('partySize', e.target.value)} min={1}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
@@ -222,12 +231,12 @@ export default function ReservationsPage() {
                 </select>
               </div>
               <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
-                placeholder="Notes..." rows={2}
+                placeholder={t('reservations.notesPlaceholder')} rows={2}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowCreate(false); setError(''); setForm(BLANK); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={handleCreate} disabled={saving}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">
                 {saving ? 'Saving...' : 'Create'}

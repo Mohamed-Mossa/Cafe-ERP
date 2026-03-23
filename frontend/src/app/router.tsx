@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAppSelector } from './hooks';
 import AppShell from '../components/layout/AppShell';
 import LoginPage from '../features/auth/components/LoginPage';
@@ -27,10 +27,17 @@ import TournamentsPage from '../features/tournaments/components/TournamentsPage'
 import ExpensesPage from '../features/expenses/components/ExpensesPage';
 import SettingsPage from '../features/settings/components/SettingsPage';
 import DebtManagementPage from '../features/debt/components/DebtManagementPage';
+import type { Role } from '../types/api.types';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAppSelector(s => s.auth);
   if (!accessToken) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function RoleRoute({ allowed, children }: { allowed: Role[]; children: React.ReactNode }) {
+  const { role } = useAppSelector(s => s.auth);
+  if (!role || !allowed.includes(role)) return <RoleHome />;
   return <>{children}</>;
 }
 
@@ -41,9 +48,24 @@ function RoleHome() {
   return <Navigate to="/pos" replace />;
 }
 
+const POS_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR', 'CASHIER', 'WAITER'];
+const FLOOR_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR', 'CASHIER', 'WAITER'];
+const KDS_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR', 'CASHIER', 'KITCHEN', 'BARISTA'];
+const GAMING_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR', 'CASHIER'];
+const SHIFT_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR', 'CASHIER'];
+const INVENTORY_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR'];
+const CUSTOMER_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR', 'CASHIER'];
+const MANAGER_ROLES: Role[] = ['OWNER', 'MANAGER'];
+const DEBT_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR'];
+const ORDER_HISTORY_ROLES: Role[] = ['OWNER', 'MANAGER', 'SUPERVISOR', 'KITCHEN', 'BARISTA'];
+
+const withRole = (allowed: Role[], element: React.ReactNode) => (
+  <RoleRoute allowed={allowed}>{element}</RoleRoute>
+);
+
 export default function AppRouter() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         {/* Receipt is standalone (printable) — no AppShell */}
@@ -52,32 +74,32 @@ export default function AppRouter() {
         <Route path="/qr-menu" element={<QRMenuPage />} />
         <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
           <Route index element={<RoleHome />} />
-          <Route path="pos"            element={<POSPage />} />
-          <Route path="floor"          element={<FloorPage />} />
-          <Route path="gaming"         element={<GamingPage />} />
-          <Route path="kds"            element={<KDSPage />} />
-          <Route path="shifts"         element={<ShiftPage />} />
-          <Route path="inventory"      element={<InventoryPage />} />
-          <Route path="stock-forecast" element={<StockForecastPage />} />
-          <Route path="customers"      element={<CRMPage />} />
-          <Route path="reservations"   element={<ReservationsPage />} />
-          <Route path="promotions"     element={<PromotionsPage />} />
-          <Route path="happy-hours"    element={<HappyHourPage />} />
-          <Route path="menu"           element={<MenuPage />} />
-          <Route path="staff"          element={<UsersPage />} />
-          <Route path="suppliers"      element={<SuppliersPage />} />
-          <Route path="reports"        element={<ReportsPage />} />
-          <Route path="activity-log"  element={<ActivityLogPage />} />
-          <Route path="order-history"  element={<OrderHistoryPage />} />
-          <Route path="match-mode"     element={<MatchModePage />} />
-          <Route path="memberships"    element={<MembershipsPage />} />
-          <Route path="tournaments"    element={<TournamentsPage />} />
-          <Route path="expenses"       element={<ExpensesPage />} />
-          <Route path="settings"       element={<SettingsPage />} />
-          <Route path="debt"           element={<DebtManagementPage />} />
+          <Route path="pos"            element={withRole(POS_ROLES, <POSPage />)} />
+          <Route path="floor"          element={withRole(FLOOR_ROLES, <FloorPage />)} />
+          <Route path="gaming"         element={withRole(GAMING_ROLES, <GamingPage />)} />
+          <Route path="kds"            element={withRole(KDS_ROLES, <KDSPage />)} />
+          <Route path="shifts"         element={withRole(SHIFT_ROLES, <ShiftPage />)} />
+          <Route path="inventory"      element={withRole(INVENTORY_ROLES, <InventoryPage />)} />
+          <Route path="stock-forecast" element={withRole(INVENTORY_ROLES, <StockForecastPage />)} />
+          <Route path="customers"      element={withRole(CUSTOMER_ROLES, <CRMPage />)} />
+          <Route path="reservations"   element={withRole(CUSTOMER_ROLES, <ReservationsPage />)} />
+          <Route path="promotions"     element={withRole(MANAGER_ROLES, <PromotionsPage />)} />
+          <Route path="happy-hours"    element={withRole(MANAGER_ROLES, <HappyHourPage />)} />
+          <Route path="menu"           element={withRole(MANAGER_ROLES, <MenuPage />)} />
+          <Route path="staff"          element={withRole(MANAGER_ROLES, <UsersPage />)} />
+          <Route path="suppliers"      element={withRole(INVENTORY_ROLES, <SuppliersPage />)} />
+          <Route path="reports"        element={withRole(MANAGER_ROLES, <ReportsPage />)} />
+          <Route path="activity-log"   element={withRole(MANAGER_ROLES, <ActivityLogPage />)} />
+          <Route path="order-history"  element={withRole(ORDER_HISTORY_ROLES, <OrderHistoryPage />)} />
+          <Route path="match-mode"     element={withRole(CUSTOMER_ROLES, <MatchModePage />)} />
+          <Route path="memberships"    element={withRole(CUSTOMER_ROLES, <MembershipsPage />)} />
+          <Route path="tournaments"    element={withRole(CUSTOMER_ROLES, <TournamentsPage />)} />
+          <Route path="expenses"       element={withRole(MANAGER_ROLES, <ExpensesPage />)} />
+          <Route path="settings"       element={withRole(['OWNER'], <SettingsPage />)} />
+          <Route path="debt"           element={withRole(DEBT_ROLES, <DebtManagementPage />)} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }

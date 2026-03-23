@@ -42,6 +42,7 @@ type SubTab = 'products' | 'recipe';
 const EMOJI_OPTIONS = ['☕','🧃','🥤','🍵','🧋','🍔','🍕','🍝','🥗','🍰','🍩','🧁','🍦','🥙','🌮','🍜','🥞','🍳','🥩','🍤','🥨','🍿','🧂','🥜','🎂','🍫','🍬','🍭','🍿','🍽️'];
 
 export default function MenuPage() {
+  const { t } = useI18n();
   const { data: catsRes } = useGetMgmtCategoriesQuery();
   const { data: prodsRes, isLoading } = useGetMgmtProductsQuery();
   const { data: invRes } = useGetInventoryItemsQuery();
@@ -105,9 +106,9 @@ export default function MenuPage() {
   };
 
   const handleCreate = async () => {
-    if (!form.sku || !form.name || !form.sellingPrice || !form.categoryId) { setFormError('All fields required'); return; }
+    if (!form.sku || !form.name || !form.sellingPrice || !form.categoryId) { setFormError(t('required')); return; }
     setSaving(true); setFormError('');
-    try { await createProduct({ ...form, sellingPrice: parseFloat(form.sellingPrice) }).unwrap(); setShowCreate(false); setForm(BLANK); flash('✅ Product created'); }
+    try { await createProduct({ ...form, sellingPrice: parseFloat(form.sellingPrice) }).unwrap(); setShowCreate(false); setForm(BLANK); flash(`✅ ${t('saved')}`); }
     catch (e: any) { setFormError(e?.data?.message || 'Failed'); }
     finally { setSaving(false); }
   };
@@ -117,28 +118,28 @@ export default function MenuPage() {
     setRecipeSaving(true);
     try {
       await saveRecipe({ id: selectedProduct.id, body: { notes: recipeNotes, ingredients: recipeIngredients.filter(i => i.inventoryItemId) } }).unwrap();
-      flash('✅ Recipe saved'); setSubTab('products');
+      flash(`✅ ${t('saved')}`); setSubTab('products');
     } catch (e: any) { alert(e?.data?.message || 'Failed to save recipe'); }
     finally { setRecipeSaving(false); }
   };
 
   const handleCreateCat = async () => {
     if (!catForm.name) return;
-    try { await createCategory(catForm).unwrap(); setShowCatCreate(false); setCatForm(CAT_BLANK); flash('✅ Category created'); }
-    catch { flash('❌ Failed to create category'); }
+    try { await createCategory(catForm).unwrap(); setShowCatCreate(false); setCatForm(CAT_BLANK); flash(`✅ ${t('saved')}`); }
+    catch { flash(`❌ ${t('failed')}`); }
   };
 
   const handleUpdateCat = async () => {
     if (!showCatEdit) return;
-    try { await updateCategory({ id: showCatEdit.id, ...catForm }).unwrap(); setShowCatEdit(null); flash('✅ Category updated'); }
-    catch { flash('❌ Failed to update'); }
+    try { await updateCategory({ id: showCatEdit.id, ...catForm }).unwrap(); setShowCatEdit(null); flash(`✅ ${t('saved')}`); }
+    catch { flash(`❌ ${t('failed')}`); }
   };
 
   const handleDeleteCat = async (cat: any) => {
     const count = products.filter((p: any) => p.categoryId === cat.id).length;
     if (count > 0 && !confirm(`"${cat.name}" has ${count} product(s). It will be hidden, not deleted. Continue?`)) return;
-    try { await deleteCategory(cat.id).unwrap(); flash('✅ Category removed'); }
-    catch { flash('❌ Failed'); }
+    try { await deleteCategory(cat.id).unwrap(); flash(`✅ ${t('deleted')}`); }
+    catch { flash(`❌ ${t('failed')}`); }
   };
 
   const addIngredient = () => setRecipeIngredients(prev => [...prev, { inventoryItemId: '', quantity: '1', unit: 'g' }]);
@@ -164,7 +165,7 @@ export default function MenuPage() {
           )}
         </div>
         <div className="flex gap-2">
-          <a href="/qr-menu" target="_blank" rel="noopener noreferrer"
+          <a href="#/qr-menu" target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-xl text-sm font-semibold transition">
             📱 Preview QR Menu
           </a>
@@ -195,7 +196,7 @@ export default function MenuPage() {
       {subTab === 'products' && mainTab === 'categories' && (
         <div className="flex-1 bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col">
           {cats.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400">No categories yet</div>
+            <div className="flex-1 flex items-center justify-center text-slate-400">{t('noData')}</div>
           ) : (
             <div className="overflow-auto flex-1">
               <table className="w-full">
@@ -241,11 +242,11 @@ export default function MenuPage() {
       {/* ── PRODUCTS TAB ── */}
       {subTab === 'products' && mainTab === 'products' && (<>
         <div className="flex gap-3">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or SKU..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t('menu.searchNameSku')}
             className="flex-1 px-4 py-2 rounded-xl border border-slate-200 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500" />
           <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
             className="px-4 py-2 rounded-xl border border-slate-200 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">All Categories</option>
+            <option value="">{t('menu.allCategories')}</option>
             {cats.map((c: any) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
           </select>
           <div className="px-3 py-2 bg-white rounded-xl border border-slate-200 text-sm text-slate-400">{filtered.length} items</div>
@@ -262,7 +263,7 @@ export default function MenuPage() {
               </thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={8} className="px-4 py-16 text-center text-slate-400">No products found</td></tr>
+                  ? <tr><td colSpan={8} className="px-4 py-16 text-center text-slate-400">{t('noData')}</td></tr>
                   : filtered.map((p: any) => (
                   <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50 transition">
                     <td className="px-4 py-3 font-mono text-xs text-slate-400">{p.sku}</td>
@@ -292,11 +293,11 @@ export default function MenuPage() {
                     <td className="px-4 py-3">
                       <div className="flex gap-1.5 flex-wrap">
                         <button onClick={() => { setEditPriceFor(p); setNewPriceVal(String(p.sellingPrice)); }}
-                          className="px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium">Price</button>
+                          className="px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-medium">{t('price')}</button>
                         <button onClick={() => { setEditCostFor(p); setNewCostVal(String(p.costPrice || '')); }}
                           className="px-2 py-1 text-xs bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-lg font-medium">Cost</button>
                         <button onClick={() => openRecipeEditor(p)}
-                          className="px-2 py-1 text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg font-medium">Recipe</button>
+                          className="px-2 py-1 text-xs bg-orange-50 text-orange-600 hover:bg-orange-100 rounded-lg font-medium">{t('menu.recipe')}</button>
                         <button onClick={() => toggleActive(p.id)}
                           className={`px-2 py-1 text-xs rounded-lg font-medium ${p.active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
                           {p.active ? 'Hide' : 'Show'}
@@ -318,14 +319,14 @@ export default function MenuPage() {
             <p className="text-sm text-slate-400">Define ingredients — automatically deducted from inventory when order is paid</p>
           </div>
           <textarea value={recipeNotes} onChange={e => setRecipeNotes(e.target.value)}
-            placeholder="Recipe notes (preparation instructions)" rows={2}
+            placeholder={t('menu.recipeNotes')} rows={2}
             className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none mb-4" />
           <div className="space-y-3 mb-4">
             {recipeIngredients.map((ing, i) => (
               <div key={i} className="flex gap-2 items-center bg-slate-50 p-3 rounded-xl">
                 <select value={ing.inventoryItemId} onChange={e => setIng(i, 'inventoryItemId', e.target.value)}
                   className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white outline-none">
-                  <option value="">Select ingredient...</option>
+                  <option value="">{t('menu.selectIngredient')}</option>
                   {invItems.map((item: any) => <option key={item.id} value={item.id}>{item.name} ({item.unit})</option>)}
                 </select>
                 <input type="number" value={ing.quantity} onChange={e => setIng(i, 'quantity', e.target.value)}
@@ -350,7 +351,7 @@ export default function MenuPage() {
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 className="font-bold text-lg mb-4">Add Product</h2>
+            <h2 className="font-bold text-lg mb-4">{t('menu.addProduct')}</h2>
             {formError && <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{formError}</div>}
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
@@ -374,7 +375,7 @@ export default function MenuPage() {
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowCreate(false); setFormError(''); setForm(BLANK); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={handleCreate} disabled={saving}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">
                 {saving ? 'Saving...' : 'Create'}
@@ -387,18 +388,18 @@ export default function MenuPage() {
       {editPriceFor && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h2 className="font-bold text-lg mb-1">Update Price</h2>
+            <h2 className="font-bold text-lg mb-1">{t('update')} {t('price')}</h2>
             <p className="text-sm text-slate-400 mb-3">{editPriceFor.name} — currently {formatCurrency(editPriceFor.sellingPrice)}</p>
             <input type="number" value={newPriceVal} onChange={e => setNewPriceVal(e.target.value)} autoFocus
               className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 focus:border-blue-500 outline-none text-2xl font-black text-center mb-3" />
-            <input value={priceReason} onChange={e => setPriceReason(e.target.value)} placeholder="Reason (optional)"
+            <input value={priceReason} onChange={e => setPriceReason(e.target.value)} placeholder={t('menu.reasonOptional')}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-blue-500 mb-4" />
             <div className="flex gap-3">
               <button onClick={() => { setEditPriceFor(null); setNewPriceVal(''); setPriceReason(''); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
-              <button onClick={async () => { await updatePrice({ id: editPriceFor.id, newPrice: parseFloat(newPriceVal), reason: priceReason }); setEditPriceFor(null); flash('✅ Price updated'); }}
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
+              <button onClick={async () => { await updatePrice({ id: editPriceFor.id, newPrice: parseFloat(newPriceVal), reason: priceReason }); setEditPriceFor(null); flash(`✅ ${t('saved')}`); }}
                 disabled={!newPriceVal}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">Update</button>
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">{t('update')}</button>
             </div>
           </div>
         </div>
@@ -420,10 +421,10 @@ export default function MenuPage() {
             )}
             <div className="flex gap-3">
               <button onClick={() => { setEditCostFor(null); setNewCostVal(''); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
-              <button onClick={async () => { await updateCost({ id: editCostFor.id, costPrice: parseFloat(newCostVal) }); setEditCostFor(null); setNewCostVal(''); flash('✅ Cost updated'); }}
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
+              <button onClick={async () => { await updateCost({ id: editCostFor.id, costPrice: parseFloat(newCostVal) }); setEditCostFor(null); setNewCostVal(''); flash(`✅ ${t('saved')}`); }}
                 disabled={!newCostVal || parseFloat(newCostVal) <= 0}
-                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">Save Cost</button>
+                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">{t('save')} {t('inventory.avgCost')}</button>
             </div>
           </div>
         </div>
@@ -443,7 +444,7 @@ export default function MenuPage() {
                     className="w-12 h-12 text-2xl bg-slate-50 border-2 border-slate-200 hover:border-blue-400 rounded-xl flex items-center justify-center transition">
                     {catForm.icon || '🍽️'}
                   </button>
-                  <span className="text-xs text-slate-400">Click to pick an icon</span>
+                  <span className="text-xs text-slate-400">{t('edit')}</span>
                 </div>
                 {showEmojiPicker && (
                   <div className="mt-2 p-3 bg-slate-50 rounded-xl grid grid-cols-10 gap-1">
@@ -468,7 +469,7 @@ export default function MenuPage() {
             </div>
             <div className="flex gap-2 mt-4">
               <button onClick={() => { setShowCatCreate(false); setShowCatEdit(null); setShowEmojiPicker(false); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={showCatCreate ? handleCreateCat : handleUpdateCat} disabled={!catForm.name}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold rounded-xl text-sm">
                 {showCatCreate ? 'Create' : 'Save'}

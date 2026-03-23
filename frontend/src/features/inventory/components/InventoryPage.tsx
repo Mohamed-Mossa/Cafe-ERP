@@ -18,15 +18,6 @@ const inventoryApi = baseApi.injectEndpoints({
 const { useGetInventoryQuery, useGetAlertsQuery, useGetSuppliersQuery, useAddPurchaseMutation, useRecordWastageMutation, useStockCountMutation, useCreateItemMutation } = inventoryApi;
 
 type Tab = 'all' | 'alerts' | 'purchase' | 'wastage' | 'count' | 'add';
-const TABS: { key: Tab; label: string; icon: string; roles?: string }[] = [
-  { key: 'all',      label: 'All Items', icon: '📦' },
-  { key: 'alerts',   label: 'Alerts',    icon: '⚠️' },
-  { key: 'purchase', label: 'Purchase',  icon: '🛍' },
-  { key: 'wastage',  label: 'Wastage',   icon: '🗑' },
-  { key: 'count',    label: 'Stock Count', icon: '🔢' },
-  { key: 'add',      label: 'Add Item',  icon: '➕' },
-];
-
 const UNITS = ['g', 'kg', 'ml', 'L', 'pcs', 'box', 'bottle', 'pack', 'can', 'sheet'];
 
 export default function InventoryPage() {
@@ -47,6 +38,14 @@ export default function InventoryPage() {
   const items: any[]    = invRes?.data    || [];
   const alerts: any[]   = alertsRes?.data || [];
   const suppliers: any[] = supRes?.data   || [];
+  const tabs: { key: Tab; label: string; icon: string; roles?: string }[] = [
+    { key: 'all', label: 'All Items', icon: '📦' },
+    { key: 'alerts', label: t('inventory.lowStock'), icon: '⚠️' },
+    { key: 'purchase', label: 'Purchase', icon: '🛍' },
+    { key: 'wastage', label: 'Wastage', icon: '🗑' },
+    { key: 'count', label: 'Stock Count', icon: '🔢' },
+    { key: 'add', label: 'Add Item', icon: '➕' },
+  ];
   const filtered = items.filter(i => !search || i.name.toLowerCase().includes(search.toLowerCase()));
 
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
@@ -60,7 +59,7 @@ export default function InventoryPage() {
 
   const handleAction = async (action: () => Promise<any>, successMsg: string) => {
     try { await action(); setForm({}); flash(successMsg); }
-    catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
+    catch (e: any) { flash(`❌ ${e?.data?.message || t('failed')}`); }
   };
 
   return (
@@ -70,7 +69,7 @@ export default function InventoryPage() {
         <h1 className="text-xl font-bold text-slate-800">📦 Inventory</h1>
         {alerts.length > 0 && (
           <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-bold animate-pulse">
-            ⚠️ {alerts.length} Low Stock
+            ⚠️ {alerts.length} {t('inventory.lowStock')}
           </span>
         )}
       </div>
@@ -84,13 +83,13 @@ export default function InventoryPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 flex-wrap">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+        {tabs.map(tabItem => (
+          <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-1.5 ${
-              tab === t.key ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              tab === tabItem.key ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
             }`}>
-            <span>{t.icon}</span>
-            <span>{t.key === 'alerts' && alerts.length > 0 ? `Alerts (${alerts.length})` : t.label}</span>
+            <span>{tabItem.icon}</span>
+            <span>{tabItem.key === 'alerts' && alerts.length > 0 ? `${t('inventory.lowStock')} (${alerts.length})` : tabItem.label}</span>
           </button>
         ))}
       </div>
@@ -117,7 +116,7 @@ export default function InventoryPage() {
                   <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">Loading...</td></tr>
                 ) : (tab === 'all' ? filtered : alerts).length === 0 ? (
                   <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-400">
-                    {tab === 'alerts' ? '✅ All stock levels are good' : 'No items found'}
+                    {tab === 'alerts' ? t('inventory.goodStock') : t('noData')}
                   </td></tr>
                 ) : (tab === 'all' ? filtered : alerts).map((item: any) => (
                   <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50">
@@ -134,7 +133,7 @@ export default function InventoryPage() {
                     <td className="px-4 py-3 text-slate-600 text-sm">{formatCurrency(item.averageCost)}</td>
                     <td className="px-4 py-3">
                       {item.currentStock <= 0 ? (
-                        <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-bold">Out of Stock</span>
+                        <span className="px-2 py-0.5 bg-red-100 text-red-600 rounded-full text-xs font-bold">{t('inventory.outOfStock')}</span>
                       ) : item.currentStock <= item.reorderLevel ? (
                         <span className="px-2 py-0.5 bg-yellow-100 text-yellow-600 rounded-full text-xs font-bold">Low</span>
                       ) : (
@@ -159,7 +158,7 @@ export default function InventoryPage() {
               {items.map((i: any) => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
             </select>
             <div className="grid grid-cols-2 gap-3">
-              <input type="number" placeholder="Quantity *" value={form.quantity || ''}
+              <input type="number" placeholder={`${t('quantity')} *`} value={form.quantity || ''}
                 onChange={e => set('quantity', e.target.value)}
                 className="px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
               <input type="number" placeholder="Unit Cost (EGP)" value={form.unitCost || ''}
@@ -171,10 +170,10 @@ export default function InventoryPage() {
                 setForm((p: any) => ({ ...p, supplierId: e.target.value, supplierName: sup?.name || '' }));
               }}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm bg-white focus:ring-2 focus:ring-blue-500">
-              <option value="">Select Supplier (optional)</option>
+              <option value="">{t('inventory.selectSupplier')}</option>
               {suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
-            <input placeholder="Invoice Number" value={form.invoiceNumber || ''}
+            <input placeholder={t('inventory.invoiceNumber')} value={form.invoiceNumber || ''}
               onChange={e => set('invoiceNumber', e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
             <button onClick={() => {
@@ -185,7 +184,7 @@ export default function InventoryPage() {
                   supplierName: form.supplierName || '',
                   invoiceNumber: form.invoiceNumber || '',
                 };
-                handleAction(() => addPurchase(payload).unwrap(), '✅ Purchase recorded');
+                handleAction(() => addPurchase(payload).unwrap(), `✅ ${t('inventory.addPurchase')}`);
               }}
               disabled={!form.inventoryItemId || !form.quantity}
               className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-200 text-white font-bold rounded-xl transition">
@@ -204,10 +203,10 @@ export default function InventoryPage() {
               <option value="">Select Item *</option>
               {items.map((i: any) => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}
             </select>
-            <input type="number" placeholder="Quantity *" value={form.quantity || ''}
+            <input type="number" placeholder={`${t('quantity')} *`} value={form.quantity || ''}
               onChange={e => set('quantity', e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
-            <input placeholder="Reason (e.g. expired, spilled)" value={form.reason || ''}
+            <input placeholder={t('inventory.wastageReasonPh')} value={form.reason || ''}
               onChange={e => set('reason', e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
             <button onClick={() => {
@@ -216,7 +215,7 @@ export default function InventoryPage() {
                   quantity: parseFloat(form.quantity),
                   reason: form.reason || '',
                 };
-                handleAction(() => recordWastage(payload).unwrap(), '✅ Wastage recorded');
+                handleAction(() => recordWastage(payload).unwrap(), `✅ ${t('inventory.addWastage')}`);
               }}
               disabled={!form.inventoryItemId || !form.quantity}
               className="w-full py-3 bg-red-500 hover:bg-red-600 disabled:bg-slate-200 text-white font-bold rounded-xl transition">
@@ -260,11 +259,11 @@ export default function InventoryPage() {
                 {parseFloat(form.countedQuantity) < parseFloat(form._currentStock) ? ' (shortage)' : ' (surplus)'}
               </div>
             )}
-            <input placeholder="Notes / Reason" value={form.notes || ''}
+            <input placeholder={t('inventory.notesReason')} value={form.notes || ''}
               onChange={e => set('notes', e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
             <button
-              onClick={() => handleAction(() => stockCount({ inventoryItemId: form.inventoryItemId, actualCount: parseFloat(form.countedQuantity), notes: form.notes }).unwrap(), '✅ Stock count saved')}
+              onClick={() => handleAction(() => stockCount({ inventoryItemId: form.inventoryItemId, actualCount: parseFloat(form.countedQuantity), notes: form.notes }).unwrap(), `✅ ${t('inventory.stockCount')}`)}
               disabled={!form.inventoryItemId || !form.countedQuantity}
               className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold rounded-xl transition">
               Save Count
@@ -281,7 +280,7 @@ export default function InventoryPage() {
               onChange={e => set('name', e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
             <div className="grid grid-cols-2 gap-3">
-              <input placeholder="SKU (optional)" value={form.sku || ''}
+              <input placeholder={t('inventory.skuOptional')} value={form.sku || ''}
                 onChange={e => set('sku', e.target.value.toUpperCase())}
                 className="px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm font-mono focus:ring-2 focus:ring-blue-500" />
               <select value={form.unit || ''} onChange={e => set('unit', e.target.value)}
@@ -292,25 +291,25 @@ export default function InventoryPage() {
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Initial Stock</label>
+                <label className="text-xs text-slate-500 block mb-1">{t('inventory.currentStock')}</label>
                 <input type="number" placeholder="0" value={form.initialStock || ''}
                   onChange={e => set('initialStock', e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Reorder Level</label>
+                <label className="text-xs text-slate-500 block mb-1">{t('inventory.reorderLevel')}</label>
                 <input type="number" placeholder="0" value={form.reorderLevel || ''}
                   onChange={e => set('reorderLevel', e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Safety Stock</label>
+                <label className="text-xs text-slate-500 block mb-1">{t('inventory.safetyStock')}</label>
                 <input type="number" placeholder="0" value={form.safetyStock || ''}
                   onChange={e => set('safetyStock', e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
               </div>
             </div>
-            <input placeholder="Category (e.g. Beverages, Food, Cleaning)" value={form.category || ''}
+            <input placeholder={t('inventory.categoryPh')} value={form.category || ''}
               onChange={e => set('category', e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm focus:ring-2 focus:ring-blue-500" />
             <button onClick={() => {
@@ -323,7 +322,7 @@ export default function InventoryPage() {
                   reorderLevel: form.reorderLevel ? parseFloat(form.reorderLevel) : 0,
                   safetyStock: form.safetyStock ? parseFloat(form.safetyStock) : 0,
                 };
-                handleAction(() => createItem(payload).unwrap(), '✅ Item added');
+                handleAction(() => createItem(payload).unwrap(), `✅ ${t('inventory.addItem')}`);
               }}
               disabled={!form.name || !form.unit}
               className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold rounded-xl transition">

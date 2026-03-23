@@ -70,14 +70,15 @@ public class GamingController {
 
     @PostMapping("/sessions/{id}/end")
     public ResponseEntity<ApiResponse<java.util.Map<String,Object>>> end(@PathVariable UUID id) {
-        GamingSession session = gamingService.endSession(id);
-        var result = new java.util.LinkedHashMap<String,Object>();
-        // Only return scalar values — not the full entity which contains Hibernate proxies
-        result.put("linkedOrderId", session.getLinkedOrderId() != null ? session.getLinkedOrderId().toString() : null);
-        result.put("gamingAmount", session.getGamingAmount());
-        result.put("totalMinutes", session.getTotalMinutes());
-        result.put("deviceName", session.getDeviceName());
-        return ResponseEntity.ok(ApiResponse.success("Session ended", result));
+        return ResponseEntity.ok(ApiResponse.success("Session ended", toEndResult(gamingService.endSession(id))));
+    }
+
+    @PostMapping("/sessions/{id}/end-with-package")
+    public ResponseEntity<ApiResponse<java.util.Map<String,Object>>> endWithPackage(
+            @PathVariable UUID id, @RequestBody Map<String, Object> body) {
+        UUID customerPackageId = UUID.fromString(body.get("customerPackageId").toString());
+        return ResponseEntity.ok(ApiResponse.success("Session ended using package",
+                toEndResult(gamingService.endSessionWithPackage(id, customerPackageId))));
     }
 
     @PostMapping("/sessions/{id}/order")
@@ -93,5 +94,18 @@ public class GamingController {
             @PathVariable UUID id, @RequestBody Map<String, Object> body) {
         UUID targetDeviceId = UUID.fromString((String) body.get("targetDeviceId"));
         return ResponseEntity.ok(ApiResponse.success(gamingService.transferSession(id, targetDeviceId)));
+    }
+
+    private Map<String, Object> toEndResult(com.cafe.erp.gaming.application.EndSessionResult endResult) {
+        GamingSession session = endResult.session();
+        var result = new java.util.LinkedHashMap<String,Object>();
+        result.put("linkedOrderId", endResult.linkedOrderId() != null ? endResult.linkedOrderId().toString() : null);
+        result.put("gamingAmount", session.getGamingAmount());
+        result.put("totalMinutes", session.getTotalMinutes());
+        result.put("deviceName", session.getDeviceName());
+        result.put("packageUsed", endResult.packageUsed());
+        result.put("customerPackageId", endResult.customerPackageId() != null ? endResult.customerPackageId().toString() : null);
+        result.put("deductedHours", endResult.deductedHours());
+        return result;
     }
 }

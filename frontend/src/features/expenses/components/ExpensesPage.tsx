@@ -72,22 +72,22 @@ export default function ExpensesPage() {
   });
 
   const handleCreate = async () => {
-    if (!form.categoryId || !form.amount) { flash('❌ Category and amount required'); return; }
+    if (!form.categoryId || !form.amount) { flash(`❌ ${t('required')}`); return; }
     try {
       await createExpense(form).unwrap();
       setShowForm(false);
       setForm({ categoryId: '', amount: '', description: '', expenseDate: today });
-      flash('✅ Expense recorded');
+      flash(`✅ ${t('saved')}`);
     } catch (e: any) { flash('❌ ' + (e?.data?.message || 'Failed')); }
   };
 
   const handleCreateCat = async () => {
-    if (!catForm.name) { flash('❌ Name required'); return; }
+    if (!catForm.name) { flash(`❌ ${t('required')}`); return; }
     try {
       await createCategory(catForm).unwrap();
       setShowCatForm(false); setCatForm({ name: '', parentCategory: 'MISC' });
-      flash('✅ Category created');
-    } catch { flash('❌ Failed'); }
+      flash(`✅ ${t('saved')}`);
+    } catch { flash(`❌ ${t('failed')}`); }
   };
 
   return (
@@ -130,7 +130,7 @@ export default function ExpensesPage() {
           ▶ Filter
         </button>
         <div className="ml-auto flex items-center gap-2">
-          <label className="text-xs text-slate-500">Category:</label>
+          <label className="text-xs text-slate-500">{t('expenses.categories')}:</label>
           <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
             className="text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none">
             <option value="">All</option>
@@ -172,7 +172,7 @@ export default function ExpensesPage() {
                       <td className="px-4 py-3 text-slate-500 max-w-xs truncate">{e.description || '—'}</td>
                       <td className="px-4 py-3 text-slate-500 text-xs">{e.recordedByName || '—'}</td>
                       <td className="px-4 py-3">
-                        <button onClick={() => { if (confirm('Delete this expense?')) deleteExpense(e.id); }}
+                        <button onClick={() => { if (confirm(`${t('delete')}?`)) deleteExpense(e.id); }}
                           className="text-xs text-red-400 hover:text-red-600 transition">🗑</button>
                       </td>
                     </tr>
@@ -201,7 +201,7 @@ export default function ExpensesPage() {
                 <label className="text-xs text-slate-500 block mb-1">Category*</label>
                 <select value={form.categoryId} onChange={e => setForm(p => ({ ...p, categoryId: e.target.value }))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm">
-                  <option value="">Select category...</option>
+                  <option value="">{t('expenses.selectCategory')}...</option>
                   {PARENT_CATS.map(parent => (
                     <optgroup key={parent} label={parent}>
                       {categories.filter((c: any) => c.parentCategory === parent).map((c: any) => (
@@ -225,7 +225,7 @@ export default function ExpensesPage() {
                 rows={2} className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm resize-none" />
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+              <button onClick={() => setShowForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={handleCreate} disabled={!form.categoryId || !form.amount}
                 className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold rounded-xl text-sm">Save</button>
             </div>
@@ -242,7 +242,7 @@ export default function ExpensesPage() {
               <input placeholder="Category name*" value={catForm.name} onChange={e => setCatForm(p => ({ ...p, name: e.target.value }))}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Parent Type</label>
+                <label className="text-xs text-slate-500 block mb-1">{t('expenses.parentType')}</label>
                 <select value={catForm.parentCategory} onChange={e => setCatForm(p => ({ ...p, parentCategory: e.target.value }))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm">
                   {PARENT_CATS.map(p => <option key={p}>{p}</option>)}
@@ -250,9 +250,9 @@ export default function ExpensesPage() {
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => setShowCatForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+              <button onClick={() => setShowCatForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={handleCreateCat} disabled={!catForm.name}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold rounded-xl text-sm">Create</button>
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 text-white font-bold rounded-xl text-sm">{t('create')}</button>
             </div>
 
             {/* Existing categories */}

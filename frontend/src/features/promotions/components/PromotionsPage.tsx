@@ -60,7 +60,7 @@ export default function PromotionsPage() {
               </button>
               <button onClick={() => { setEditTarget(p); setForm({ code: p.code, description: p.description || '', discountType: p.discountType, discountValue: String(p.discountValue), maxUsageCount: String(p.maxUsageCount), minimumOrderAmount: p.minimumOrderAmount ? String(p.minimumOrderAmount) : '', startDate: p.startDate, endDate: p.endDate }); setShow(true); }}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 transition">✏️</button>
-              <button onClick={async () => { if (confirm('Delete this promo code?')) await deletePromo(p.id); }}
+              <button onClick={async () => { if (confirm(`${t('delete')}?`)) await deletePromo(p.id); }}
                 className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition">🗑️</button>
             </div>
           </div>
@@ -74,32 +74,32 @@ export default function PromotionsPage() {
             <div className="space-y-3">
               <input placeholder="Code (e.g. SUMMER20)" value={form.code} onChange={e => f('code', e.target.value.toUpperCase())}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm font-mono uppercase" />
-              <input placeholder="Description" value={form.description} onChange={e => f('description', e.target.value)}
+              <input placeholder={t('promotions.description')} value={form.description} onChange={e => f('description', e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm" />
               <div className="grid grid-cols-2 gap-2">
                 <select value={form.discountType} onChange={e => f('discountType', e.target.value)}
                   className="px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm">
-                  <option value="PERCENT">Percentage</option>
-                  <option value="FIXED">Fixed Amount</option>
+                  <option value="PERCENT">{t('promotions.percentage')}</option>
+                  <option value="FIXED">{t('promotions.fixedAmount')}</option>
                 </select>
-                <input type="number" placeholder="Value" value={form.discountValue} onChange={e => f('discountValue', e.target.value)}
+                <input type="number" placeholder={t('promotions.discountValue')} value={form.discountValue} onChange={e => f('discountValue', e.target.value)}
                   className="px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm" />
               </div>
-              <input type="number" placeholder="Max Usage Count" value={form.maxUsageCount} onChange={e => f('maxUsageCount', e.target.value)}
+              <input type="number" placeholder={t('promotions.maxUsageCount')} value={form.maxUsageCount} onChange={e => f('maxUsageCount', e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm" />
               <input type="number" placeholder="Minimum Order Amount (EGP) — optional" value={form.minimumOrderAmount} onChange={e => f('minimumOrderAmount', e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm" />
               <div className="grid grid-cols-2 gap-2">
-                <div><label className="text-xs text-slate-500">Start Date</label>
+                <div><label className="text-xs text-slate-500">{t('promotions.validFrom')}</label>
                   <input type="date" value={form.startDate} onChange={e => f('startDate', e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm mt-1" /></div>
-                <div><label className="text-xs text-slate-500">End Date</label>
+                <div><label className="text-xs text-slate-500">{t('promotions.validTo')}</label>
                   <input type="date" value={form.endDate} onChange={e => f('endDate', e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 outline-none text-sm mt-1" /></div>
               </div>
             </div>
             <div className="flex gap-2 mt-4">
-              <button onClick={() => { setShow(false); setEditTarget(null); }} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600">Cancel</button>
+              <button onClick={() => { setShow(false); setEditTarget(null); }} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600">{t('cancel')}</button>
               <button onClick={async () => {
                   const payload: any = { ...form, discountValue: parseFloat(form.discountValue), maxUsageCount: parseInt(form.maxUsageCount) };
                   if (form.minimumOrderAmount) payload.minimumOrderAmount = parseFloat(form.minimumOrderAmount);

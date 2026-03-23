@@ -34,6 +34,7 @@ const todayEnd = () => {
 };
 
 export default function OrderHistoryPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [from, setFrom] = useState(today());
   const [to, setTo] = useState(todayEnd());
@@ -81,10 +82,10 @@ export default function OrderHistoryPage() {
             className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
-          <label className="text-xs text-slate-500 block mb-1">Source</label>
+          <label className="text-xs text-slate-500 block mb-1">{t('orderHistory.source')}</label>
           <select value={source} onChange={e => setSource(e.target.value)}
             className="px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none bg-white focus:ring-2 focus:ring-blue-500">
-            <option value="">All Sources</option>
+            <option value="">{t('orderHistory.allSources')}</option>
             <option value="TABLE">🪑 Dine-In</option>
             <option value="TAKEAWAY">🥡 Takeaway</option>
             <option value="GAMING">🎮 Gaming</option>
@@ -95,7 +96,7 @@ export default function OrderHistoryPage() {
           🔍 Search
         </button>
         <div className="flex-1 min-w-40">
-          <label className="text-xs text-slate-500 block mb-1">Quick filter</label>
+          <label className="text-xs text-slate-500 block mb-1">{t('filter')}</label>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Order#, cashier, customer, table..."
             className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
@@ -108,7 +109,7 @@ export default function OrderHistoryPage() {
           <div className="flex-1 flex items-center justify-center text-slate-400">Loading...</div>
         ) : orders.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-slate-400">
-            <div className="text-center"><div className="text-5xl mb-3">📋</div><div>No orders found</div></div>
+            <div className="text-center"><div className="text-5xl mb-3">📋</div><div>{t('noData')}</div></div>
           </div>
         ) : (
           <div className="overflow-auto flex-1">
@@ -145,7 +146,7 @@ export default function OrderHistoryPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => window.open(`/receipt/${o.id}`, '_blank')}
+                      <button onClick={() => window.open(`${window.location.pathname}#/receipt/${o.id}`, '_blank')}
                         className="text-xs px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition font-medium">
                         🧾 Receipt
                       </button>

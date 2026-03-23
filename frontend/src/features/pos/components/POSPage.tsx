@@ -2,11 +2,13 @@ import { useI18n } from '../../../i18n';
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocation } from 'react-router-dom';
+import { useAppSelector } from '../../../app/hooks';
 import { RootState } from '../../../app/store';
 import { setCurrentOrder, clearCurrentOrder } from '../store/posSlice';
 import { useCreateOrderMutation, useAddLineMutation, useAttachCustomerMutation, useTransferOrderMutation, useGetOrderQuery } from '../api/ordersApi';
 import { baseApi } from '../../../app/baseApi';
 import { Product, CafeTable, ApiResponse } from '../../../types/api.types';
+import { canViewCustomerPhones } from '../../../utils/customerPrivacy';
 import ProductGrid from './ProductGrid/ProductGrid';
 import OrderPanel from './OrderPanel/OrderPanel';
 import PaymentModal from './PaymentModal/PaymentModal';
@@ -26,7 +28,9 @@ export default function POSPage() {
   const dispatch = useDispatch();
   const location = useLocation();
   const { currentOrder } = useSelector((s: RootState) => s.pos);
+  const role = useAppSelector(s => s.auth.role);
   const { t, isRTL } = useI18n();
+  const canSeeCustomerPhone = canViewCustomerPhones(role);
 
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [source, setSource] = useState<'TAKEAWAY' | 'TABLE'>('TAKEAWAY');
@@ -94,7 +98,7 @@ export default function POSPage() {
       }
       const updated = await addLine({ orderId: order.id, productId: product.id, quantity: 1 }).unwrap();
       dispatch(setCurrentOrder(updated.data));
-    } catch (err: any) { console.error('Add product failed:', err?.data?.message); }
+    } catch (err: any) { alert(err?.data?.message || 'Failed to add item'); }
   };
 
   const handleClear = () => { dispatch(clearCurrentOrder()); setPickedTable(null); setSource('TAKEAWAY'); };
@@ -120,6 +124,10 @@ export default function POSPage() {
     { key: 'TAKEAWAY', icon: '🥡', label: t('pos.takeaway') },
     { key: 'TABLE',    icon: '🪑', label: isRTL ? 'أكل داخل' : 'Dine-In' },
   ];
+
+  const openReceipt = (orderId: string) => {
+    window.open(`${window.location.pathname}#/receipt/${orderId}`, '_blank');
+  };
 
   return (
     <div className="h-full flex flex-col gap-3">
@@ -183,7 +191,7 @@ export default function POSPage() {
         <PaymentModal order={currentOrder} onClose={() => setPaymentOpen(false)}
           onSuccess={(orderId) => { 
             setPaymentOpen(false); 
-            window.open(`/receipt/${orderId}`, '_blank'); 
+            openReceipt(orderId);
             setTimeout(() => handleClear(), 150); 
           }} />
       )}
@@ -253,7 +261,7 @@ export default function POSPage() {
             {foundCustomer ? (
               <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-3">
                 <div className="font-bold text-green-800">{foundCustomer.fullName}</div>
-                <div className="text-sm text-green-600">{foundCustomer.phone}</div>
+                {canSeeCustomerPhone && foundCustomer.phone && <div className="text-sm text-green-600">{foundCustomer.phone}</div>}
                 <div className="text-xs text-amber-600 font-semibold mt-1">⭐ {foundCustomer.totalPoints} {isRTL ? 'نقطة' : 'points'} · {foundCustomer.tier}</div>
                 <button onClick={() => handleAttachCustomer(foundCustomer)}
                   className="mt-3 w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm">

@@ -4,8 +4,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../../../app/store';
 import { Order } from '../../../../types/api.types';
 import {
-  useRemoveLineMutation, useApplyDiscountMutation,
+  useRemoveLineMutation, useApplyDiscountMutation, useAddLineMutation,
   useApplyPromoMutation, useUpdateLineNotesMutation, useCancelOrderMutation,
+  useUpdateLineQtyMutation,
 } from '../../api/ordersApi';
 import { setCurrentOrder } from '../../store/posSlice';
 import { formatCurrency } from '../../../../utils/currency';
@@ -18,6 +19,8 @@ export default function OrderPanel({ order, onPay, onClearOrder }: Props) {
   const { t, isRTL } = useI18n();
 
   const [removeLine] = useRemoveLineMutation();
+  const [addLine] = useAddLineMutation();
+  const [updateLineQty] = useUpdateLineQtyMutation();
   const [applyDiscount] = useApplyDiscountMutation();
   const [applyPromo] = useApplyPromoMutation();
   const [updateLineNotes] = useUpdateLineNotesMutation();
@@ -120,12 +123,30 @@ export default function OrderPanel({ order, onPay, onClearOrder }: Props) {
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-slate-800 truncate">{line.productName}</div>
-                <div className="text-xs text-slate-400 mt-0.5">× {line.quantity} @ {formatCurrency(line.unitPrice)}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{formatCurrency(line.unitPrice)} {t('pos.items').slice(0,4)}</div>
               </div>
-              <div className="text-sm font-bold text-slate-800 flex-shrink-0">{formatCurrency(line.totalPrice)}</div>
+              {/* Qty controls */}
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={async () => {
+                    if (line.quantity <= 1) {
+                      const res = await removeLine({ orderId: order.id, lineId: line.id }).unwrap();
+                      dispatch(setCurrentOrder(res.data));
+                    } else {
+                      const res = await updateLineQty({ orderId: order.id, lineId: line.id, quantity: line.quantity - 1 }).unwrap();
+                      dispatch(setCurrentOrder(res.data));
+                    }
+                  }}
+                  className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-200 hover:bg-red-100 hover:text-red-600 text-slate-500 text-base font-bold transition leading-none">−</button>
+                <span className="text-sm font-bold text-slate-800 min-w-[1.5rem] text-center">{line.quantity}</span>
+                <button
+                  onClick={async () => { const res = await addLine({ orderId: order.id, productId: line.productId!, quantity: 1 }).unwrap(); dispatch(setCurrentOrder(res.data)); }}
+                  className="w-6 h-6 flex items-center justify-center rounded-full bg-slate-200 hover:bg-green-100 hover:text-green-600 text-slate-500 text-base font-bold transition leading-none">+</button>
+              </div>
+              <div className="text-sm font-bold text-slate-800 flex-shrink-0 w-16 text-right">{formatCurrency(line.totalPrice)}</div>
               <button
                 onClick={() => openNoteEditor(line.id, line.notes || '')}
-                title="Add note"
+                title={t('pos.addNote')}
                 className="text-slate-300 hover:text-blue-400 w-6 h-6 flex items-center justify-center rounded-full hover:bg-blue-50 transition flex-shrink-0 text-sm leading-none"
               >✏️</button>
               <button onClick={() => handleRemoveLine(line.id)}
@@ -141,7 +162,7 @@ export default function OrderPanel({ order, onPay, onClearOrder }: Props) {
                   value={noteVal}
                   onChange={e => setNoteVal(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') saveNote(); if (e.key === 'Escape') setEditingNoteFor(null); }}
-                  placeholder="e.g. no sugar, well done..."
+                  placeholder={t('pos.lineNotePlaceholder')}
                   autoFocus
                   className="flex-1 px-2 py-1 text-xs rounded-lg border border-blue-300 outline-none focus:ring-1 focus:ring-blue-400 bg-white"
                 />
@@ -163,13 +184,20 @@ export default function OrderPanel({ order, onPay, onClearOrder }: Props) {
         {mode === 'none' && (
           <div className={`flex gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <button onClick={() => setMode('discount')}
-              className="flex-1 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition">
+              disabled={!!order.promoCodeApplied}
+              className="flex-1 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition disabled:opacity-40 disabled:cursor-not-allowed">
               % {t('pos.discount')}
             </button>
-            <button onClick={() => { setMode('promo'); setPromoError(''); }}
-              className="flex-1 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-green-50 hover:text-green-600 rounded-xl transition">
-              🎟 {t('pos.promoCode')}
-            </button>
+            {order.promoCodeApplied ? (
+              <div className="flex-1 py-2 text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-xl text-center">
+                🎟 {order.promoCodeApplied} ✓
+              </div>
+            ) : (
+              <button onClick={() => { setMode('promo'); setPromoError(''); }}
+                className="flex-1 py-2 text-xs font-semibold text-slate-500 bg-slate-100 hover:bg-green-50 hover:text-green-600 rounded-xl transition">
+                🎟 {t('pos.promoCode')}
+              </button>
+            )}
           </div>
         )}
         {mode === 'discount' && (
@@ -239,7 +267,7 @@ export default function OrderPanel({ order, onPay, onClearOrder }: Props) {
             />
             <div className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <button onClick={() => { setShowCancelConfirm(false); setCancelReason(''); }}
-                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm font-medium">{isRTL ? 'خليه' : 'Keep Order'}</button>
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm font-medium">{t('pos.keepOrder')}</button>
               <button onClick={handleCancelOrder}
                 className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl text-sm transition">{t('confirm')} {t('cancel')}</button>
             </div>

@@ -135,20 +135,34 @@ public class OrderService {
             throw new BusinessException("Product is not available");
         }
 
-        OrderLine line = OrderLine.builder()
-                .orderId(orderId)
-                .productId(product.getId())
-                .productName(product.getName())
-                .quantity(req.getQuantity())
-                .unitPrice(product.getSellingPrice())
-                .totalPrice(product.getSellingPrice().multiply(BigDecimal.valueOf(req.getQuantity())))
-                .notes(req.getNotes())
-                .build();
+        // If the same product already exists on this order (with no special notes), increment qty
+        java.util.Optional<OrderLine> existing = order.getLines().stream()
+                .filter(l -> product.getId().equals(l.getProductId())
+                        && !l.isDeleted()
+                        && (l.getNotes() == null || l.getNotes().isBlank()))
+                .findFirst();
 
-        orderLineRepository.save(line);
-        order.getLines().add(line);
+        if (existing.isPresent()) {
+            OrderLine line = existing.get();
+            int newQty = line.getQuantity() + req.getQuantity();
+            line.setQuantity(newQty);
+            line.setTotalPrice(product.getSellingPrice().multiply(java.math.BigDecimal.valueOf(newQty)));
+            orderLineRepository.save(line);
+        } else {
+            OrderLine line = OrderLine.builder()
+                    .orderId(orderId)
+                    .productId(product.getId())
+                    .productName(product.getName())
+                    .quantity(req.getQuantity())
+                    .unitPrice(product.getSellingPrice())
+                    .totalPrice(product.getSellingPrice().multiply(java.math.BigDecimal.valueOf(req.getQuantity())))
+                    .notes(req.getNotes())
+                    .build();
+            orderLineRepository.save(line);
+            order.getLines().add(line);
+        }
+
         order.recalculateTotals();
-
         Order updated = orderRepository.save(order);
         broadcastOrderUpdate(updated);
         return updated;
@@ -415,6 +429,28 @@ public class OrderService {
         orderLineRepository.save(line);
         broadcastOrderUpdate(order);
         return order;
+    }
+
+    @Transactional
+    public Order updateLineQuantity(UUID orderId, UUID lineId, int newQty) {
+        Order order = getOpenOrder(orderId);
+        OrderLine line = orderLineRepository.findById(lineId)
+            .orElseThrow(() -> BusinessException.notFound("Order line"));
+        if (!line.getOrderId().equals(orderId))
+            throw new BusinessException("Line does not belong to this order");
+        if (newQty <= 0) {
+            // Remove the line entirely
+            orderLineRepository.delete(line);
+            order.getLines().removeIf(l -> l.getId().equals(lineId));
+        } else {
+            line.setQuantity(newQty);
+            line.setTotalPrice(line.getUnitPrice().multiply(java.math.BigDecimal.valueOf(newQty)));
+            orderLineRepository.save(line);
+        }
+        order.recalculateTotals();
+        Order updated = orderRepository.save(order);
+        broadcastOrderUpdate(updated);
+        return updated;
     }
 
     /** Merge all lines from sourceOrder into targetOrder, then cancel sourceOrder */

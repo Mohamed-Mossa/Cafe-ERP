@@ -38,17 +38,17 @@ export default function HappyHourPage() {
   };
 
   const handleCreate = async () => {
-    if (!form.name || !form.discountPercent) { setError('Name and discount are required'); return; }
+    if (!form.name || !form.discountPercent) { setError(`${t('promotions.title')} — ${t('required')}`); return; }
     setSaving(true); setError('');
     try { await createHH(form).unwrap(); setShowCreate(false); setForm(BLANK); refetch(); }
-    catch (e: any) { setError(e?.data?.message || 'Failed'); }
+    catch (e: any) { setError(e?.data?.message || t('failed')); }
     finally { setSaving(false); }
   };
 
   return (
     <div className="h-full flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">⚡ Happy Hours</h1>
+        <h1 className="text-xl font-bold text-slate-800">{`⚡ ${t('nav.happyHours')}`}</h1>
         <button onClick={() => { setShowCreate(true); setError(''); }}
           className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl text-sm">
           + Add Happy Hour
@@ -61,8 +61,8 @@ export default function HappyHourPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-slate-300">
             <div className="text-6xl mb-3">⚡</div>
-            <div className="text-lg font-medium">No happy hours set up yet</div>
-            <div className="text-sm mt-1">Create time-based discounts that apply automatically at the POS</div>
+            <div className="text-lg font-medium">{t('noData')}</div>
+            <div className="text-sm mt-1">{t('promotions.title')}</div>
           </div>
         </div>
       ) : (
@@ -91,7 +91,7 @@ export default function HappyHourPage() {
                   className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${h.active ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
                   {h.active ? 'Deactivate' : 'Activate'}
                 </button>
-                <button onClick={async () => { if (confirm('Delete this happy hour?')) { await deleteHH(h.id); refetch(); } }}
+                <button onClick={async () => { if (confirm(`${t('delete')}?`)) { await deleteHH(h.id); refetch(); } }}
                   className="px-3 py-2 rounded-xl text-sm font-semibold bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition">
                   🗑️
                 </button>
@@ -118,12 +118,12 @@ export default function HappyHourPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">Start Time</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('promotions.startTime')}</label>
                   <input type="time" value={form.startTime} onChange={e => set('startTime', e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 block mb-1">End Time</label>
+                  <label className="text-xs text-slate-500 block mb-1">{t('promotions.endTime')}</label>
                   <input type="time" value={form.endTime} onChange={e => set('endTime', e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-orange-400" />
                 </div>
@@ -145,7 +145,7 @@ export default function HappyHourPage() {
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => { setShowCreate(false); setError(''); setForm(BLANK); }}
-                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">Cancel</button>
+                className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 text-sm">{t('cancel')}</button>
               <button onClick={handleCreate} disabled={saving}
                 className="flex-1 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white font-bold rounded-xl text-sm">
                 {saving ? 'Saving...' : 'Create'}

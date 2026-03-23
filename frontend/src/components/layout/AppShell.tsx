@@ -69,9 +69,9 @@ export default function AppShell() {
   ];
 
   const handlePwChange = async () => {
-    if (!pwForm.currentPassword || !pwForm.newPassword) { setPwError('All fields required'); return; }
-    if (pwForm.newPassword !== pwForm.confirm) { setPwError('Passwords do not match'); return; }
-    if (pwForm.newPassword.length < 6) { setPwError('Min 6 characters'); return; }
+    if (!pwForm.currentPassword || !pwForm.newPassword) { setPwError(t('required')); return; }
+    if (pwForm.newPassword !== pwForm.confirm) { setPwError(t('staff.passwordMismatch')); return; }
+    if (pwForm.newPassword.length < 6) { setPwError(t('staff.passwordTooShort')); return; }
     setPwError('');
     try {
       await changePassword({ currentPassword: pwForm.currentPassword, newPassword: pwForm.newPassword }).unwrap();
@@ -136,7 +136,7 @@ export default function AppShell() {
         <div className="border-t border-slate-700/60 flex-shrink-0">
           <button onClick={() => { setShowPwModal(true); setPwError(''); setPwSuccess(false); }}
             className={`w-full px-4 py-2.5 text-slate-400 hover:text-white text-sm hover:bg-slate-800 transition flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <span>🔑</span> {isRTL ? 'تغيير كلمة السر' : 'Change Password'}
+            <span>🔑</span> {t('staff.resetPassword')}
           </button>
           <button onClick={() => { dispatch(logout()); navigate('/login'); }}
             className={`w-full px-4 py-2.5 text-slate-400 hover:text-red-400 text-sm hover:bg-slate-800 transition flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
@@ -154,19 +154,19 @@ export default function AppShell() {
       {showPwModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h2 className="font-bold text-lg mb-4">🔑 {isRTL ? 'تغيير كلمة السر' : 'Change Password'}</h2>
+            <h2 className="font-bold text-lg mb-4">🔑 {t('staff.resetPassword')}</h2>
             {pwSuccess ? (
               <div className="text-center py-6">
                 <div className="text-4xl mb-2">✅</div>
-                <div className="font-semibold text-green-700">{isRTL ? 'تم التحديث!' : 'Password updated!'}</div>
+                <div className="font-semibold text-green-700">{t('staff.passwordChanged')}</div>
               </div>
             ) : (
               <div className="space-y-3">
                 {pwError && <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{pwError}</div>}
                 {[
-                  { key: 'currentPassword', ph: isRTL ? 'كلمة السر الحالية' : 'Current Password' },
-                  { key: 'newPassword',     ph: isRTL ? 'كلمة السر الجديدة' : 'New Password' },
-                  { key: 'confirm',         ph: isRTL ? 'تأكيد كلمة السر' : 'Confirm New Password' },
+                  { key: 'currentPassword', ph: t('password') },
+                  { key: 'newPassword',     ph: t('staff.newPassword') },
+                  { key: 'confirm',         ph: `${t('confirm')} ${t('staff.newPassword')}` },
                 ].map(({ key, ph }) => (
                   <input key={key} type="password" placeholder={ph}
                     value={pwForm[key as keyof typeof pwForm]}
